@@ -1,0 +1,35 @@
+#include "utils.h"
+
+void preparefifos(int *fifo_in, int*fifo_out) {
+
+	char file_name_inboud[100];
+	char file_name_outbound[100];
+
+	// unlink fifos
+	sprintf(file_name_inboud, "./%s", INBOUND_FIFO);
+	unlink(file_name_inboud);
+	sprintf(file_name_outbound, "./%s", OUTBOUND_FIFO);
+	unlink(file_name_outbound);
+
+	// create fifos
+	if (mkfifo(file_name_inboud, 0666) == -1) {
+		printf("Error mkfifo inboud: %s\n", strerror(errno));
+		exit(-1);
+	}
+
+	if (mkfifo(file_name_outbound, 0666) == -1) {
+		printf("Error mkfifo outboud: %s\n", strerror(errno));
+		exit(-1);
+	}
+
+	// open fifos
+	if ((*fifo_in = open(file_name_inboud, O_RDONLY)) == -1) {
+		printf("Error open inboud: %s\n", strerror(errno));
+		exit(-1);
+	}
+
+	if ((*fifo_out = open(file_name_outbound, O_WRONLY)) == -1) {
+		printf("Error open outboud: %s\n", strerror(errno));
+		exit(-1);
+	}
+}
