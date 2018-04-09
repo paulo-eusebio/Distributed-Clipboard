@@ -47,7 +47,7 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
 	clipboard_copy(clipboard_id, -1, buf, count);
 	
-	int bytes_read = read(clipboard_id + 1, buf, sizeof(buf));
+	int bytes_read = read(clipboard_id + 1, buf, count);
 
 	return bytes_read;
 }
