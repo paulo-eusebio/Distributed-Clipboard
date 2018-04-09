@@ -35,7 +35,7 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 	// (struct Message)buf->region = region;
 
-	return write(clipboard_id, buf, sizeof(buf));
+	return write(clipboard_id, buf, count);
 }
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {

@@ -10,6 +10,8 @@ int main()
 	struct Message message_sent;
 	struct Message received;
 
+	char dado = 'a';
+
 	message_sent.type = 0;
 	strcpy(message_sent.message, "Hello World\n");
 	message_sent.length = strlen(message_sent.message);
@@ -25,12 +27,14 @@ int main()
 	printf(" Message info: type=%d ; message='%s' ; length='%d' ; region='%d'\n", message_sent.type, message_sent.message, message_sent.length, message_sent.region);
 
 	// 
-	char *msg = malloc(sizeof(message_sent));
+	char *msg = malloc(sizeof(message_sent)*sizeof(char));
 	memcpy(msg, &message_sent, sizeof(message_sent));
 
-	int bytes_copied = clipboard_copy(fd, region, &msg, sizeof(msg));
+	int bytes_copied = clipboard_copy(fd, region, msg, sizeof(message_sent));
 
 	printf("Copied %d bytes", bytes_copied);
+
+	//scanf("%c\n", &dado);
 
 	// testar retorno
 
