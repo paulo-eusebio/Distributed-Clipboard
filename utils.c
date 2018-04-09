@@ -33,3 +33,12 @@ void preparefifos(int *fifo_in, int*fifo_out) {
 		exit(-1);
 	}
 }
+
+void * mymalloc(int size){
+	void * node = (void*)malloc(size);
+	if(node == NULL){
+		printf("erro malloc:\n");
+		exit(1);
+	}
+	return node;
+}

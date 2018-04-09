@@ -14,28 +14,59 @@ int main() {
 
 	int fifo_in, fifo_out = -1;	
 
-	//struct Message regions[10];
+	char **regions = (char**) mymalloc(10*sizeof(char*));
+	for (int i = 0; i < 10; ++i) {
+	    regions[i] = (char *) malloc(STRINGSIZE+1);
+	    memset(regions[i], 0, STRINGSIZE+1);
+	}
 
 	preparefifos(&fifo_in, &fifo_out);
 
 	//abrir FIFOS
-	int len_data;
 	struct Message msg_recv;
+	struct Message msg_send;
 	char *data = malloc(sizeof(char)*sizeof(msg_recv));
 
 	while (1) {
 		printf(".\n");
-		read(fifo_in, data, sizeof(msg_recv));
+		read(fifo_in, data, sizeof(msg_recv)); // we probably we will to do a loop here in the stream part
+
 		memcpy(&msg_recv, data, sizeof(msg_recv));
-		printf("received %s\n", msg_recv.message);
-		len_data = strlen(data);
 
-		printf("sending value %d - length %d\n", len_data, (int) sizeof(len_data));
-		//write(fifo_out, &len_data, sizeof(len_data));
+		if (msg_recv.type == 0) {
+			printf("received %s\n", msg_recv.message);
+
+			// for guarantee that the region request is a valid region
+			if (msg_recv.region >= 0 && msg_recv.region < 10){
+				strcpy(regions[msg_recv.region], msg_recv.message);
+
+				/**
+				 *
+				 *	THE PROPAGATION TO THE OTHERS CLIPBOARDS WILL
+				 *  PROBABLY DONE HERE
+				 *  
+				 */
+			}
+
+		} else {
+			msg_send.type = 1;
+			strcpy(msg_send.message, regions[msg_recv.region]);
+			msg_send.length = strlen(regions[msg_recv.region]);
+			msg_send.region = msg_recv.region;
+
+			char *msg = malloc(sizeof(msg_send)*sizeof(char));
+			memcpy(msg, &msg_send, sizeof(msg_send));
+
+			if(write(fifo_out, msg,sizeof(msg_send)) == -1) {
+				printf("Error writing answer: %s\n", strerror(errno));
+			}
+
+			free(msg);
+		}
+
+
+		memset(data, 0, strlen(data));
 	}
-
-	// Deste lado temos que fazer
-	// memcpy(struct, msg)
 
 	exit(0);
 }

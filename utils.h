@@ -13,6 +13,10 @@
 
 #include "clipboard.h"
 
+#define STRINGSIZE 255
+
 void preparefifos(int *fifo_in, int*fifo_out);
+
+void * mymalloc(int size);
 
 #endif

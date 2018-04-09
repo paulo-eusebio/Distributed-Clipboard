@@ -8,9 +8,6 @@
 int main()
 {
 	struct Message message_sent;
-	struct Message received;
-
-	char dado = 'a';
 
 	message_sent.type = 0;
 	strcpy(message_sent.message, "Hello World\n");
@@ -26,7 +23,6 @@ int main()
 
 	printf(" Message info: type=%d ; message='%s' ; length='%d' ; region='%d'\n", message_sent.type, message_sent.message, message_sent.length, message_sent.region);
 
-	// 
 	char *msg = malloc(sizeof(message_sent)*sizeof(char));
 	memcpy(msg, &message_sent, sizeof(message_sent));
 
@@ -34,13 +30,24 @@ int main()
 
 	printf("Copied %d bytes", bytes_copied);
 
-	//scanf("%c\n", &dado);
+	free(msg);
 
-	// testar retorno
+	struct Message message_recv;
+	message_recv.type = 1;
+	memset(message_recv.message, 0, strlen(message_recv.message));
+	message_recv.length = 0;
+	message_recv.region = 0;
+	region = 0;
 
-	// int bytes_read = clipboard_paste(fd, region, &message, sizeof(message));
+	msg = malloc(sizeof(message_recv)*sizeof(char));
+	memcpy(msg, &message_recv, sizeof(message_recv));
 
-	// printf("Received %d\n", dados_int);
+	int bytes_read = clipboard_paste(fd, region, msg, sizeof(message_recv));
+	memcpy(&message_recv, msg, sizeof(message_recv));
+
+	printf("Received %d, and the message '%s'\n", bytes_read, message_recv.message);
+
+	free(msg);
 
 	exit(0);
 }

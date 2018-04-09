@@ -33,18 +33,23 @@ int clipboard_connect(char *clipboard_dir){
 
 int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
-	// (struct Message)buf->region = region;
+	int bytes_written = -1;
 
-	return write(clipboard_id, buf, count);
+	if( (bytes_written = write(clipboard_id, buf, count)) == -1){
+		printf("Error writing to clipboard: %s\n", strerror(errno));
+		return -1;
+	} else {
+		return bytes_written;
+	}
 }
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
-	// write(clipboard_id, &region, sizeof(region));
+	clipboard_copy(clipboard_id, -1, buf, count);
 	
-	// int bytes_read = read(clipboard_id + 1, buf, sizeof(buf));
+	int bytes_read = read(clipboard_id + 1, buf, sizeof(buf));
 
-	// return bytes_read;
+	return bytes_read;
 }
 
 /// This function closes the connection between the application and the local clipboard
