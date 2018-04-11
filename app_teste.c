@@ -4,15 +4,12 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include "utils.h"
 
-int main()
-{
-	struct Message message_sent;
+int main(int argc, char const *argv[]) {
 
-	message_sent.type = 0;
-	strcpy(message_sent.message, "Hello World\n");
-	message_sent.length = strlen(message_sent.message);
-	message_sent.region = 0;
+	char bufstdin[MAX_INPUT] = "";
+	char message[MAX_INPUT] = "";
 	int region = 0;
 
 	int fd = clipboard_connect("./");
@@ -21,33 +18,24 @@ int main()
 		exit(-1);
 	}
 
-	printf(" Message info: type=%d ; message='%s' ; length='%d' ; region='%d'\n", message_sent.type, message_sent.message, message_sent.length, message_sent.region);
+	// Getting Input
+	printf("Insert message:\n");
+	fgets(bufstdin, MAX_INPUT, stdin);
+	sscanf(bufstdin, "%[^\n]", message);
+	printf("Insert Region to save:\n");
+	memset(bufstdin, 0, strlen(bufstdin));
+	fgets(bufstdin, MAX_INPUT, stdin);
+	sscanf(bufstdin, "%d", &region);
 
-	char *msg = malloc(sizeof(message_sent)*sizeof(char));
-	memcpy(msg, &message_sent, sizeof(message_sent));
+	int bytes_copied = clipboard_copy(fd, region, message, sizeof(message));
 
-	int bytes_copied = clipboard_copy(fd, region, msg, sizeof(message_sent));
+	printf("Copied %d bytes\n", bytes_copied);
 
-	printf("Copied %d bytes", bytes_copied);
+	memset(message, 0, strlen(message));
 
-	free(msg);
+	int bytes_read = clipboard_paste(fd, region, message, sizeof(message)); // <-- este 0 é uma possível fonte de erro
 
-	struct Message message_recv;
-	message_recv.type = 1;
-	memset(message_recv.message, 0, strlen(message_recv.message));
-	message_recv.length = 0;
-	message_recv.region = 0;
-	region = 0;
-
-	msg = malloc(sizeof(message_recv)*sizeof(char));
-	memcpy(msg, &message_recv, sizeof(message_recv));
-
-	int bytes_read = clipboard_paste(fd, region, msg, sizeof(message_recv));
-	memcpy(&message_recv, msg, sizeof(message_recv));
-
-	printf("Received %d, and the message '%s'\n", bytes_read, message_recv.message);
-
-	free(msg);
+	printf("Received %d, and the message '%s'\n", bytes_read, message);
 
 	exit(0);
 }

@@ -14,9 +14,12 @@
 #include "clipboard.h"
 
 #define STRINGSIZE 255
+#define MAX_INPUT 100
 
 void preparefifos(int *fifo_in, int*fifo_out);
 
 void * mymalloc(int size);
+
+char * getBuffer(int type, int region, char *message, int length);
 
 #endif

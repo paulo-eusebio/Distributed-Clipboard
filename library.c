@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include "utils.h"
 
 int clipboard_connect(char *clipboard_dir){
 	char fifo_name[100];
@@ -35,19 +36,32 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 	int bytes_written = -1;
 
-	if( (bytes_written = write(clipboard_id, buf, count)) == -1){
+	char * msg = getBuffer(0, region, (char*) buf, count);
+
+	if( (bytes_written = write(clipboard_id, msg, count)) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
+		free(msg);
 		return -1;
 	} else {
+		free(msg);
 		return bytes_written;
 	}
 }
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
-	clipboard_copy(clipboard_id, -1, buf, count);
-	
+	char *msg = getBuffer(1, region, "", count);
+
+	// requests the content of a certain region
+	if(write(clipboard_id, msg, count) == -1){
+		printf("Error writing to clipboard: %s\n", strerror(errno));
+		free(msg);
+		return -1;
+	}
+
 	int bytes_read = read(clipboard_id + 1, buf, sizeof(buf));
+
+	free(msg);
 
 	return bytes_read;
 }
