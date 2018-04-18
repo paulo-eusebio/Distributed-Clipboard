@@ -1,5 +1,6 @@
 #include "utils.h"
 
+/// 
 void preparefifos(int *fifo_in, int*fifo_out) {
 
 	char file_name_inboud[100];
@@ -41,4 +42,32 @@ void * mymalloc(int size){
 		exit(1);
 	}
 	return node;
+}
+
+
+/*
+* @brief Turns the parameters into a struct and copies its memory into
+* a string
+* 
+ */
+char * getBuffer(int type, int region, char *message, int length) {
+
+	struct Message message_struct;
+
+	message_struct.type = type;
+	strcpy(message_struct.message, message);
+	message_struct.length = length;
+	message_struct.region = region;
+
+	char *msg = (char*)mymalloc(sizeof(message_struct)*sizeof(char));
+	memcpy(msg, &message_struct, sizeof(message_struct));
+
+	return msg;
+}
+
+
+void ctrl_c_callback_handler(int signum){
+	printf("Caught signal Ctr-C\n");
+	unlink(SOCK_ADDRESS);
+	exit(0);
 }

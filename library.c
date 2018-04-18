@@ -7,47 +7,80 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include "utils.h"
 
 int clipboard_connect(char *clipboard_dir){
-	char fifo_name[100];
-
-	sprintf(fifo_name, "%s%s", clipboard_dir, INBOUND_FIFO);
-	int fifo_send = open(fifo_name, O_WRONLY);
-	if(fifo_send == -1) {
-		printf("Error opening in fifo: %s\n", strerror(errno));
+	
+	struct sockaddr_un server_addr;
+	struct sockaddr_un client_addr;
+	int sock_fd = -1;
+	
+	if( (sock_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		perror("socket: ");
 		exit(-1);
 	}
-	sprintf(fifo_name, "%s%s", clipboard_dir, OUTBOUND_FIFO);
-	int fifo_recv = open(fifo_name, O_RDONLY);
-	if(fifo_recv == -1) {
-		printf("Error opening out fifo: %s\n", strerror(errno));
+	
+	printf(" socket created \n");
+
+	client_addr.sun_family = AF_UNIX;
+	sprintf(client_addr.sun_path, "./socket_%d",getpid());
+
+	int err = bind(sock_fd, (struct sockaddr *)&client_addr, sizeof(client_addr));
+	if(err == -1) {
+		perror("bind");
 		exit(-1);
 	}
 
-	// To check if the recv wasn't opened
-	if (fifo_recv < 0)
-		return fifo_recv;
-	else
-		return fifo_send;
+	server_addr.sun_family = AF_UNIX;
+	strcpy(server_addr.sun_path, SOCK_ADDRESS);
+
+	int err_c = connect(sock_fd, (const struct sockaddr *) &server_addr, sizeof(server_addr));
+	if(err_c==-1){
+				printf("Error connecting\n");
+				exit(-1);
+	}
+
+	printf("connected %d\n", err_c);
+
+	return sock_fd;
 }
 
 int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 	int bytes_written = -1;
 
-	if( (bytes_written = write(clipboard_id, buf, count)) == -1){
+	char * msg = getBuffer(0, region, (char*) buf, count);
+
+	if( (bytes_written = write(clipboard_id, msg, count)) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
+		free(msg);
 		return -1;
 	} else {
+		free(msg);
 		return bytes_written;
 	}
 }
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
-	clipboard_copy(clipboard_id, -1, buf, count);
+	printf("The region is: %d\n", region);
 	
-	int bytes_read = read(clipboard_id + 1, buf, count);
+
+	char *msg = getBuffer(1, region, "", count);
+
+	// requests the content of a certain region
+	if(write(clipboard_id, msg, count) == -1){
+		printf("Error writing to clipboard: %s\n", strerror(errno));
+		free(msg);
+		return -1;
+	}
+
+	// falta meter um while aqui
+	int bytes_read = read(clipboard_id, buf, count);
+
+	free(msg);
 
 	return bytes_read;
 }
