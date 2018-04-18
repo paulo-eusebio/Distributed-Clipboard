@@ -66,6 +66,7 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
 	printf("The region is: %d\n", region);
+	
 
 	char *msg = getBuffer(1, region, "", count);
 
