@@ -50,6 +50,8 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
+	printf("The region is: %d\n", region);
+
 	char *msg = getBuffer(1, region, "", count);
 
 	// requests the content of a certain region
@@ -59,7 +61,8 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 		return -1;
 	}
 
-	int bytes_read = read(clipboard_id + 1, buf, sizeof(buf));
+	// falta meter um while aqui
+	int bytes_read = read(clipboard_id + 1, buf, count);
 
 	free(msg);
 

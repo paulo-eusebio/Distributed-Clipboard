@@ -64,3 +64,10 @@ char * getBuffer(int type, int region, char *message, int length) {
 
 	return msg;
 }
+
+
+void ctrl_c_callback_handler(int signum){
+	printf("Caught signal Ctr-C\n");
+	unlink(SOCK_ADDRESS);
+	exit(0);
+}
