@@ -13,6 +13,7 @@
 int main() {
 
 	int fifo_in, fifo_out = -1;	
+	int bytes_read = -1;
 
 	char **regions = (char**) mymalloc(10*sizeof(char*));
 	for (int i = 0; i < 10; ++i) {
@@ -29,8 +30,12 @@ int main() {
 
 	while (1) {
 		printf(".\n");
-		read(fifo_in, data, sizeof(msg_recv)); // we probably we will to do a loop here in the stream part
-
+		bytes_read=read(fifo_in, data, sizeof(msg_recv)); // we probably we will to do a loop here in the stream part
+		if(bytes_read == -1) {
+			printf("Error reading from pipe\n");
+			exit(-1);
+		}
+		
 		memcpy(&msg_recv, data, sizeof(msg_recv));
 
 		if (msg_recv.type == 0) {
