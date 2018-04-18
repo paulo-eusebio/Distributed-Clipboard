@@ -93,7 +93,7 @@ int main() {
 			char answer[MAX_INPUT] = "";
 			strcpy(answer, regions[msg_recv.region]);
 
-			if(write(fifo_out, answer, sizeof(answer)) == -1) {
+			if(write(fd_connect, answer, sizeof(answer)) == -1) {
 				printf("Error writing answer: %s\n", strerror(errno));
 			}
 		}
