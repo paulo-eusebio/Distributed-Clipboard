@@ -34,7 +34,7 @@ int clipboard_connect(char *clipboard_dir){
 	}
 
 	server_addr.sun_family = AF_UNIX;
-	strcpy(server_addr.sun_path, SOCK_ADDRESS);
+	strcpy(server_addr.sun_path, clipboard_dir);
 
 	int err_c = connect(sock_fd, (const struct sockaddr *) &server_addr, sizeof(server_addr));
 	if(err_c==-1){

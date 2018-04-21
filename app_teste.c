@@ -14,7 +14,7 @@ int main(int argc, char const *argv[]) {
 	char message[MAX_INPUT] = "";
 	int region = 0;
 
-	int clipboard_id = clipboard_connect("./");
+	int clipboard_id = clipboard_connect(SOCK_ADDRESS);
 	if (clipboard_id == -1){
 		printf("Error opening the FIFO files\n");
 		exit(-1);

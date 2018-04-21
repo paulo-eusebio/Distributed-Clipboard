@@ -71,3 +71,40 @@ void ctrl_c_callback_handler(int signum){
 	unlink(SOCK_ADDRESS);
 	exit(0);
 }
+
+
+/*
+* Checks the clipboard mode 
+*/
+int checkMode(int argc) {
+
+	// single mode
+	if(argc == 1) {
+		return 0;
+	// connected mode
+	} else if (argc == 4) {
+		return 1;
+	// invalid input
+	} else {
+		return -1;
+	}
+}
+
+
+/*
+* Setup IPV4 socket
+* Initializing sockaddr_in
+*/
+void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_addr * addr, unsigned short port){
+
+	struct in_addr temp = (*addr);
+	temp.s_addr = addr->s_addr;
+
+	memset((void *)server, '\0', sizeof(server));
+	server->sin_addr.s_addr = temp.s_addr;
+	server->sin_port = htons(port);
+	server->sin_family = AF_INET;
+	addrlen = (socklen_t *)sizeof(*server);
+
+	return;
+}
