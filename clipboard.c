@@ -102,8 +102,8 @@ int main() {
 			}
 		}
 
-		memset(&msg_recv, 0, sizeof(msg_recv));
-		memset(data, 0, strlen(data));
+		memset(&msg_recv, '\0', sizeof(msg_recv));
+		memset(data, '\0', strlen(data));
 	}
 
 	exit(0);

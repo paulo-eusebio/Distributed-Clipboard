@@ -26,7 +26,6 @@ int clipboard_connect(char *clipboard_dir){
 
 	client_addr.sun_family = AF_UNIX;
 	sprintf(client_addr.sun_path, "./socket_%d",getpid());
-
 	int err = bind(sock_fd, (struct sockaddr *)&client_addr, sizeof(client_addr));
 	if(err == -1) {
 		perror("bind");
@@ -52,8 +51,7 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 	int bytes_written = -1;
 
 	char * msg = getBuffer(0, region, (char*) buf, count);
-
-	if( (bytes_written = write(clipboard_id, msg, count)) == -1){
+	if( (bytes_written = write(clipboard_id, msg, sizeof(struct Message))) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
 		free(msg);
 		return -1;
@@ -67,18 +65,16 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
 	printf("The region is: %d\n", region);
 	
-
-	char *msg = getBuffer(1, region, "", count);
-
+	char *msg = getBuffer(1, region, (char*)buf, count);
 	// requests the content of a certain region
-	if(write(clipboard_id, msg, count) == -1){
+	if(write(clipboard_id, msg, sizeof(struct Message)) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
 		free(msg);
 		return -1;
 	}
 
 	// falta meter um while aqui
-	int bytes_read = read(clipboard_id, buf, count);
+	int bytes_read = read(clipboard_id, buf, sizeof(struct Message));
 
 	free(msg);
 
