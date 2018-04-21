@@ -1,1 +1,3 @@
-#define SOCK_ADDRESS "/tmp/sock_16"
+
+#define SOCK_ADDRESS "./sock_teste"
+

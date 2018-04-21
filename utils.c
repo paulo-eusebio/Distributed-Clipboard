@@ -53,12 +53,10 @@ void * mymalloc(int size){
 char * getBuffer(int type, int region, char *message, int length) {
 
 	struct Message message_struct;
-
 	message_struct.type = type;
 	strcpy(message_struct.message, message);
 	message_struct.length = length;
 	message_struct.region = region;
-
 	char *msg = (char*)mymalloc(sizeof(message_struct)*sizeof(char));
 	memcpy(msg, &message_struct, sizeof(message_struct));
 
@@ -71,7 +69,6 @@ void ctrl_c_callback_handler(int signum){
 	unlink(SOCK_ADDRESS);
 	exit(0);
 }
-
 
 /*
 * Checks the clipboard mode 
