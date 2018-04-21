@@ -105,3 +105,30 @@ void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_a
 
 	return;
 }
+
+
+/*
+* For getting the content of the server the clipboard connects to
+* 
+ */
+char** getBackup(int fd, char **regions) {
+
+	char message[MAX_INPUT] = "";
+
+	for (int region = 0; region < NUM_REG; region++) {
+
+		// cleans buffer
+		memset(message, '\0', strlen(message));
+
+		// gets data from current region
+		clipboard_paste(fd, region, message, sizeof(message));
+
+		//  Only inserts the message if the region has any content
+		if(strcmp(message, "No info available in requested region.") != 0) {
+			strcpy(regions[region], message);
+		} 
+
+	}
+
+	return regions;
+}

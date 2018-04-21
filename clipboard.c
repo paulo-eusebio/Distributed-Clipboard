@@ -41,8 +41,9 @@ int main(int argc, char const *argv[]) {
 	socklen_t size_addr = sizeof(client_addr);
 
 	// IPV4 Sockets
-	int fd_client = -1;
+	int fd_client = -1, fd_server;
 	struct sockaddr_in ipv4_client;
+	struct sockaddr_in ipv4_server;
 	socklen_t addrlen = 0;
 
 	unlink(SOCK_ADDRESS);
@@ -53,6 +54,7 @@ int main(int argc, char const *argv[]) {
 	//check if the clipboard is in single or connected mode
 	if (clip_mode == SINGLE) {
 
+		// Nothing to be done?
 
 	} else if (clip_mode == CONNECTED) {
 
@@ -64,19 +66,20 @@ int main(int argc, char const *argv[]) {
 			exit(1);
 		}
 
+		memset((void*)&temp_addr,(int)'\0', sizeof(temp_addr));
 		// converting the IP arg to the appropriate type
 		inet_aton(argv[2], &temp_addr);
-		// converting the port from a char* to unsigned short
-		unsigned short client_port = (unsigned short) atoi(argv[3]);
 
 		// setting up the Socket
-		setSockaddrIP(&ipv4_client, &addrlen, &temp_addr, client_port);
+		setSockaddrIP(&ipv4_client, &addrlen, &temp_addr, (unsigned short) atoi(argv[3]));
 
 		// connect to the server clipboard
-		if( connect(fd_client, (struct sockaddr*) &ipv4_client, addrlen) == -1){
+		if( connect(fd_client, (struct sockaddr*) &ipv4_client, sizeof(ipv4_client)) == -1){
 			perror("Error while connecting to another clipboard");
 		}
 
+		// fills the regions with the content from a connected clipboard
+		regions = getBackup(fd_client, regions);
 	}
 
 	

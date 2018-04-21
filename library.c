@@ -51,6 +51,9 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 	int bytes_written = -1;
 
 	char * msg = getBuffer(0, region, (char*) buf, count);
+
+	// METER UM WHILE NO WRITE
+
 	if( (bytes_written = write(clipboard_id, msg, sizeof(struct Message))) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
 		free(msg);
@@ -66,6 +69,9 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	printf("The region is: %d\n", region);
 	
 	char *msg = getBuffer(1, region, (char*)buf, count);
+
+	// METER UM WHILE NO WRITE
+
 	// requests the content of a certain region
 	if(write(clipboard_id, msg, sizeof(struct Message)) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));

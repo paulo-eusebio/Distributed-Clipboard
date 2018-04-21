@@ -36,4 +36,6 @@ int checkMode(int argc);
 
 void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_addr * addr, unsigned short port);
 
+char** getBackup(int fd, char **regions);
+
 #endif
