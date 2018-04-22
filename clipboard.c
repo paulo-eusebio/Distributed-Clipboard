@@ -115,13 +115,13 @@ int main(int argc, char const *argv[]) {
 
 		printf(".\n");
 
-		if(read(fd_connect, data, sizeof(msg_recv)) == 0) { // we probably we will to do a loop here in the stream part
+		if(readRoutine(fd_connect, data, sizeof(msg_recv)) == 0) { // we probably we will to do a loop here in the stream part
 			printf("client disconnected, read is 0\n");
 			exit(1);
 		}
 		memcpy(&msg_recv, data, sizeof(msg_recv));
 
-		if (msg_recv.type == 0) {
+		if (msg_recv.type == COPY) { //COPY
 			printf("Received a copy request for region %d\n", msg_recv.region);
 			printf("received %s\n", msg_recv.message);
 
@@ -147,28 +147,18 @@ int main(int argc, char const *argv[]) {
 							exit(1);
 						nleft -= nwritten;
 						ptr += nwritten;
-
 					}
 				}
 
 			}
 
-		} else {
+		} else { //PASTE
 			printf("Received a paste request for region %d\n", msg_recv.region);
-
-			char answer[MAX_INPUT] = "";
-
-			// Preventing access to non-existant regions
-			if (msg_recv.region >= NUM_REG || msg_recv.region < 0) {
-				strcpy(answer, "Region unavailable.");
-			// Testing if region is empty
-			} else if(regions[msg_recv.region][0] == '\0') {
-				strcpy(answer, "No info available in requested region.");
-			} else {
-				strcpy(answer, regions[msg_recv.region]);
-			}
-
-			if(write(fd_connect, answer, sizeof(answer)) == -1) {
+			//gets message stored in requested region
+			char* answer = getPasteMessage(msg_recv.region, regions); 
+			//creates stream of bytes with message
+			data = getBuffer(PASTE_REPLY, msg_recv.region, answer, sizeof(struct Message)); 
+			if(writeRoutine(fd_connect, data, sizeof(struct Message)) == -1) {
 				printf("Error writing answer: %s\n", strerror(errno));
 			}
 		}

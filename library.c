@@ -49,12 +49,11 @@ int clipboard_connect(char *clipboard_dir){
 int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 	int bytes_written = -1;
-
+	
+	//applys message to the protocol and converts it to a stream of bytes
 	char * msg = getBuffer(0, region, (char*) buf, count);
 
-	// METER UM WHILE NO WRITE
-
-	if( (bytes_written = write(clipboard_id, msg, sizeof(struct Message))) == -1){
+	if( (bytes_written = writeRoutine(clipboard_id, msg, sizeof(struct Message))) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
 		free(msg);
 		return -1;
@@ -65,23 +64,30 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 }
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
-
-	printf("The region is: %d\n", region);
 	
+	struct Message msg_recv;
+	//applys message to the protocol and converts it to a stream of bytes
 	char *msg = getBuffer(1, region, (char*)buf, count);
-
-	// METER UM WHILE NO WRITE
+	
+	printf("The region is: %d\n", region);
 
 	// requests the content of a certain region
-	if(write(clipboard_id, msg, sizeof(struct Message)) == -1){
+	if(writeRoutine(clipboard_id, msg, sizeof(struct Message)) == -1){
 		printf("Error writing to clipboard: %s\n", strerror(errno));
 		free(msg);
 		return -1;
 	}
-
-	// falta meter um while aqui
-	int bytes_read = read(clipboard_id, buf, sizeof(struct Message));
-
+	//"data" used to store stream of bytes
+	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
+	int bytes_read = readRoutine(clipboard_id, data, sizeof(struct Message));
+	if(bytes_read == -1) {
+		printf("Error reading from the keyboard %s\n", strerror(errno));
+		free(msg);
+		return -1;	
+	}
+	//get the message from the byte stream
+	memcpy(&msg_recv, data, sizeof(msg_recv));
+	strcpy(buf, msg_recv.message);
 	free(msg);
 
 	return bytes_read;
