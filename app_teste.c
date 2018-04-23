@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
 	memset(bufstdin, '\0', strlen(bufstdin));
 	fgets(bufstdin, MAX_INPUT, stdin);
 	sscanf(bufstdin, "%d", &region);
-
+	
 	int bytes_copied = clipboard_copy(clipboard_id, region, message, sizeof(message));
 
 	printf("Copied %d bytes\n", bytes_copied);

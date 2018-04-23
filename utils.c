@@ -130,24 +130,30 @@ char* getPasteMessage(int region, char **regions) {
 * 
  */
 char** getBackup(int fd, char **regions) {
-
-	char message[MAX_INPUT] = "";
+	
+	struct Message msg;
+	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
 
 	for (int region = 0; region < NUM_REG; region++) {
 
 		// cleans buffer
-		memset(message, '\0', strlen(message));
-
-		// gets data from current region
-		clipboard_paste(fd, region, message, sizeof(message));
-
+		memset(data, '\0', strlen(data));
+		
+		// creats byte stream with the request to paste a message
+		data = getBuffer(PASTE_REQUEST, region, "", sizeof(struct Message)); 
+		// sends request to get region message
+		if(writeRoutine(fd, data, sizeof(struct Message)) == -1)
+			printf("Error writing at backup: %s\n", strerror(errno));
+		memset(data, '\0', strlen(data));
+		//waits for reply
+		if(readRoutine(fd, data, sizeof(struct Message)) == -1)
+			printf("Error reading reply at backup: %s\n", strerror(errno));
+		memcpy(&msg, data, sizeof(struct Message));
 		//  Only inserts the message if the region has any content
-		if(strcmp(message, "No info available in requested region.") != 0) {
-			strcpy(regions[region], message);
+		if(strcmp(msg.message, "No info available in requested region.") != 0) {
+			strcpy(regions[region], msg.message);
 		} 
-
 	}
-
 	return regions;
 }
 
@@ -182,7 +188,7 @@ int readRoutine(int fd, char *storageBuf, int length){
 	int nstore=0,nread=0,nleft=length;
 	char *readBuf = storageBuf;
 	while(nleft>0){
-		nread=read(fd,readBuf,nleft);
+		nread=read(fd,readBuf,nleft);		
 		nstore += nread;
 		nleft -= nread;
 		if(nread==-1){

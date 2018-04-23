@@ -27,6 +27,7 @@
 #define COPY 0
 #define PASTE_REQUEST 1
 #define PASTE_REPLY 2
+#define REPLICATE 3
 
 void preparefifos(int *fifo_in, int*fifo_out);
 

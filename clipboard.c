@@ -80,6 +80,9 @@ int main(int argc, char const *argv[]) {
 
 		// fills the regions with the content from a connected clipboard
 		regions = getBackup(fd_client, regions);
+		printf("Updated cliboard from backup:\n\n");
+			for(int i=0; i<NUM_REG;i++)
+				printf("\t %d - %s\n", i, regions[i]);
 	}
 
 	
@@ -109,49 +112,36 @@ int main(int argc, char const *argv[]) {
 	}
 
 	struct Message msg_recv;
-	char *data = (char*)mymalloc(sizeof(char)*sizeof(msg_recv));
-
+	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
+	
+	//Relevant stuff starts here!!!
 	while (1) {
 
 		printf(".\n");
 
-		if(readRoutine(fd_connect, data, sizeof(msg_recv)) == 0) { // we probably we will to do a loop here in the stream part
+		if(readRoutine(fd_connect, data, sizeof(msg_recv)) == 0) { 
 			printf("client disconnected, read is 0\n");
 			exit(1);
 		}
 		memcpy(&msg_recv, data, sizeof(msg_recv));
+		memset(data, '\0', strlen(data)); //cleans buffer for re-use
 
 		if (msg_recv.type == COPY) { //COPY
-			printf("Received a copy request for region %d\n", msg_recv.region);
-			printf("received %s\n", msg_recv.message);
-
 			// for guarantee that the region request is a valid region
 			if (msg_recv.region >= 0 && msg_recv.region < 10){
-				char *ptr = strcpy(regions[msg_recv.region], msg_recv.message);
-
-				/**
-				 *
-				 *	THE PROPAGATION TO THE OTHERS CLIPBOARDS WILL
-				 *  PROBABLY BE DONE HERE
-				 *  
-				 */
+				strcpy(regions[msg_recv.region], msg_recv.message);
+				//message propagation to other clipboard
 				if (fd_client != -1) {
-					int nbytes = strlen(msg_recv.message);
-					int nleft = nbytes;
-					int nwritten = 0;
-					
-					while(nleft > 0){
-
-						nwritten = write(fd_client, ptr, nleft);
-						if(nwritten<=0)
-							exit(1);
-						nleft -= nwritten;
-						ptr += nwritten;
-					}
+					data = getBuffer(REPLICATE, msg_recv.region, msg_recv.message, sizeof(struct Message));
+					if(writeRoutine(fd_client, data, sizeof(struct Message)) == -1) {
+						printf("Error replicating message: %s\n", strerror(errno));
+					}		
 				}
-
 			}
-
+			printf("Updated cliboard:\n\n");
+			for(int i=0; i<NUM_REG;i++)
+				printf("\t %d - %s\n", i, regions[i]);
+				
 		} else { //PASTE
 			printf("Received a paste request for region %d\n", msg_recv.region);
 			//gets message stored in requested region
@@ -165,6 +155,7 @@ int main(int argc, char const *argv[]) {
 
 		memset(&msg_recv, '\0', sizeof(msg_recv));
 		memset(data, '\0', strlen(data));
+	
 	}
 
 	exit(0);
