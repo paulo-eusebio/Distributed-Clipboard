@@ -50,7 +50,6 @@ int main(int argc, char const *argv[]) {
 	
 	signal(SIGINT, ctrl_c_callback_handler);
 
-
 	//check if the clipboard is in single or connected mode
 	if (clip_mode == SINGLE) {
 
@@ -82,6 +81,7 @@ int main(int argc, char const *argv[]) {
 		regions = getBackup(fd_client, regions);
 	}
 
+	/* UNIX SOCKETS COMMUNICATION */
 	
 	if( (fd_listen = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		perror("Opening socket: ");
@@ -107,6 +107,8 @@ int main(int argc, char const *argv[]) {
 		perror("Error accepting");
 		exit(-1);
 	}
+
+	/*****************************/
 
 	struct Message msg_recv;
 	char *data = (char*)mymalloc(sizeof(char)*sizeof(msg_recv));
@@ -179,3 +181,4 @@ int main(int argc, char const *argv[]) {
 
 	exit(0);
 }
+
