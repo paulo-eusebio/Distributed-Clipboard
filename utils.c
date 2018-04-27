@@ -106,29 +106,99 @@ void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_a
 	return;
 }
 
+//gets the message stored in the requested paste region
+char* getPasteMessage(int region, char **regions) {
+	char *answer;
+	// Preventing access to non-existant regions
+	if (region >= NUM_REG || region < 0) {
+		answer = (char*)mymalloc(strlen("Region unavailable."));
+		strcpy(answer, "Region unavailable.");
+	// Testing if region is empty
+	} else if(regions[region][0] == '\0') {
+		answer = (char*)mymalloc(strlen("No info available in requested region."));
+		strcpy(answer, "No info available in requested region.");
+	// There is a message stored, gets it
+	} else { 
+		answer = (char*)mymalloc(strlen(regions[region]));
+		strcpy(answer, regions[region]);
+	}
+	return answer;
+}
 
 /*
 * For getting the content of the server the clipboard connects to
 * 
  */
 char** getBackup(int fd, char **regions) {
-
-	char message[MAX_INPUT] = "";
+	
+	struct Message msg;
+	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
 
 	for (int region = 0; region < NUM_REG; region++) {
 
 		// cleans buffer
-		memset(message, '\0', strlen(message));
-
-		// gets data from current region
-		clipboard_paste(fd, region, message, sizeof(message));
-
+		memset(data, '\0', strlen(data));
+		
+		// creats byte stream with the request to paste a message
+		data = getBuffer(PASTE_REQUEST, region, "", sizeof(struct Message)); 
+		// sends request to get region message
+		if(writeRoutine(fd, data, sizeof(struct Message)) == -1)
+			printf("Error writing at backup: %s\n", strerror(errno));
+		memset(data, '\0', strlen(data));
+		//waits for reply
+		if(readRoutine(fd, data, sizeof(struct Message)) == -1)
+			printf("Error reading reply at backup: %s\n", strerror(errno));
+		memcpy(&msg, data, sizeof(struct Message));
 		//  Only inserts the message if the region has any content
-		if(strcmp(message, "No info available in requested region.") != 0) {
-			strcpy(regions[region], message);
+		if(strcmp(msg.message, "No info available in requested region.") != 0) {
+			strcpy(regions[region], msg.message);
 		} 
-
 	}
-
 	return regions;
 }
+
+/* Routine that calls write until it sends the "length" bytes
+ * Starts writing at the beggining of the buffer
+ * and advances according to the number of bytes that was able to write
+ * until it reaches the end of the buffer (size length) */
+int writeRoutine(int fd, char *buffer, int length) {
+	int nleft = length, nwritten = 0, total=0;
+	char *ptr = buffer;
+	while(nleft>0){
+		nwritten=write(fd,ptr,nleft);		
+		/*if(errno == EPIPE && nwritten == -1){ devemos de usar isto para quando um clip da discnect
+			printf("servidor de mensagens disconectou\n");
+			return -1;*/
+		if(nwritten <= 0){
+			printf("ocorreu um erro no write\n");
+			exit(-1);
+		}
+		nleft -= nwritten;
+		ptr += nwritten;
+		total += nwritten;
+	}
+	return total;
+}
+
+/*Routine that calls read until it receives the "length" bytes
+ * Reads always to readBuf and glues all the readings together
+ * starting at the address pointed by storageBuf 
+ * until it reads the all "length" that is supposed*/
+int readRoutine(int fd, char *storageBuf, int length){
+	int nstore=0,nread=0,nleft=length;
+	char *readBuf = storageBuf;
+	while(nleft>0){
+		nread=read(fd,readBuf,nleft);		
+		nstore += nread;
+		nleft -= nread;
+		if(nread==-1){
+			printf("Ocorreu um erro no read\n");
+			exit(-1);
+		}else if(nread==0){
+			break;
+		}
+		readBuf += nread;
+	}
+	return nstore;
+}
+
