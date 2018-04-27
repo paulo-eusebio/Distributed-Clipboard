@@ -10,11 +10,65 @@
 #include <sys/un.h>
 #include <signal.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "clipboard.h"
 #include "utils.h"
 #include "sock_stream.h"
 
+void * thread_app_listen(void * data){
+
+	// UNIX sockets
+	int fd_listen = -1, fd_connect = -1;
+	struct sockaddr_un local_addr, client_addr;
+	socklen_t size_addr = sizeof(client_addr);
+
+	if((fd_listen = socket(AF_UNIX, SOCK_STREAM,0))== -1) {
+		perror("Opening socket: ");
+		exit(-1);
+	}
+
+	local_addr.sun_family = AF_UNIX;
+	strcpy(local_addr.sun_path, SOCK_ADDRESS);
+
+	if(bind(fd_listen, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1) {
+		perror("Error while binding: ");
+		exit(-1);
+	}
+
+	if(listen(fd_listen, 2) == -1) {
+		perror("Error while listening: ");
+		exit(-1);
+	}
+
+	while(1) {
+
+		if( (fd_connect = accept(fd_listen, (struct sockaddr*) & client_addr, &size_addr)) == -1) {
+			perror("Error accepting");
+			exit(-1);
+		}
+
+		// declare thread
+		// create node
+		// add node to list
+		// create thread and send the node
+
+	}
+
+
+	return NULL;
+}
+
+// matrix for our regions
+char **regions;
+
+// stack for save the file descriptors of apps
+struct Node* root_apps = NULL;
+
+// stack for save the file descriptors of clips
+struct Node* root_clips = NULL;
+
+// where the magic happen
 int main(int argc, char const *argv[]) {
 
 
@@ -25,14 +79,34 @@ int main(int argc, char const *argv[]) {
 		exit(-1);
 	}
 
-	/* Create Clipboard Regions*/
-	char **regions = (char**) mymalloc(10*sizeof(char*));
+	// Create Clipboard Regions 
+	regions = (char**) mymalloc(10*sizeof(char*));
 	for (int i = 0; i < 10; ++i) {
 	    regions[i] = (char *) mymalloc(STRINGSIZE+1);
 	    memset(regions[i], 0, STRINGSIZE+1);
 	}
 
-	/* Sockets definition */
+	unlink(SOCK_ADDRESS);
+
+	signal(SIGINT, ctrl_c_callback_handler);
+
+
+	pthread_t thread_listen_id;
+
+
+	// fazer thread para ligar a clipboards
+
+	// thread for listening to apps that want to connect to the clipboard
+	pthread_create(&thread_listen_id, NULL, thread_app_listen, regions);
+
+
+
+	return(0);
+}
+
+	/*
+
+	// Sockets definition
 
 	// UNIX Sockets
 	int fd_listen = -1, fd_connect = -1;
@@ -84,7 +158,7 @@ int main(int argc, char const *argv[]) {
 				printf("\t %d - %s\n", i, regions[i]);
 	}
 
-	/* UNIX SOCKETS COMMUNICATION */
+	// UNIX SOCKETS COMMUNICATION 
 	
 	if( (fd_listen = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		perror("Opening socket: ");
@@ -110,8 +184,6 @@ int main(int argc, char const *argv[]) {
 		perror("Error accepting");
 		exit(-1);
 	}
-
-	/*****************************/
 
 	struct Message msg_recv;
 	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
@@ -158,8 +230,4 @@ int main(int argc, char const *argv[]) {
 		memset(&msg_recv, '\0', sizeof(msg_recv));
 		memset(data, '\0', strlen(data));
 	
-	}
-
-	exit(0);
-}
-
+	}*/
