@@ -8,8 +8,7 @@
 #include <pthread.h>
 
 // A structure to represent a stack
-struct StackNode
-{
+struct StackNode{
     int data;
     pthread_t id;
     int thread_status;

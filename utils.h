@@ -29,8 +29,6 @@
 #define PASTE_REPLY 2
 #define REPLICATE 3
 
-void preparefifos(int *fifo_in, int*fifo_out);
-
 void * mymalloc(int size);
 
 char * getBuffer(int type, int region, char *message, int length);

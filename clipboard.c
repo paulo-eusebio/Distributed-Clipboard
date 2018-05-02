@@ -1,82 +1,29 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <signal.h>
-#include <arpa/inet.h>
-#include <pthread.h>
-
 #include "clipboard.h"
 #include "utils.h"
 #include "sock_stream.h"
-
-void * thread_app_listen(void * data){
-
-	// UNIX sockets
-	int fd_listen = -1, fd_connect = -1;
-	struct sockaddr_un local_addr, client_addr;
-	socklen_t size_addr = sizeof(client_addr);
-
-	if((fd_listen = socket(AF_UNIX, SOCK_STREAM,0))== -1) {
-		perror("Opening socket: ");
-		exit(-1);
-	}
-
-	local_addr.sun_family = AF_UNIX;
-	strcpy(local_addr.sun_path, SOCK_ADDRESS);
-
-	if(bind(fd_listen, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1) {
-		perror("Error while binding: ");
-		exit(-1);
-	}
-
-	if(listen(fd_listen, 2) == -1) {
-		perror("Error while listening: ");
-		exit(-1);
-	}
-
-	while(1) {
-
-		if( (fd_connect = accept(fd_listen, (struct sockaddr*) & client_addr, &size_addr)) == -1) {
-			perror("Error accepting");
-			exit(-1);
-		}
-
-		// declare thread
-		// create node
-		// add node to list
-		// create thread and send the node
-
-	}
-
-
-	return NULL;
-}
+#include "clipthreads.h"
 
 // matrix for our regions
 char **regions;
 
 // stack for save the file descriptors of apps
-struct Node* root_apps = NULL;
+struct Connection* root_apps = NULL;
 
 // stack for save the file descriptors of clips
-struct Node* root_clips = NULL;
+struct Connection* root_clips = NULL;
 
 // where the magic happen
 int main(int argc, char const *argv[]) {
-
 
 	int clip_mode = checkMode(argc);
 
 	if (clip_mode == -1) {
 		printf("Invalid input:\n - Single Mode: No arguments\n - Connected Mode: -c IP port\n");
 		exit(-1);
+	} else if (clip_mode == 0) {
+		printf("Executing clipboard in single mode...\n");
+	} else if (clip_mode == 1) {
+		printf("Executing clipboard in connected mode...\n");
 	}
 
 	// Create Clipboard Regions 
@@ -91,15 +38,21 @@ int main(int argc, char const *argv[]) {
 	signal(SIGINT, ctrl_c_callback_handler);
 
 
-	pthread_t thread_listen_id;
+	//pthread_t thread_app_listen_id;
+	pthread_t thread_clip_id;
 
 
-	// fazer thread para ligar a clipboards
+	// fazer thread para ligar a clipboards??
+
+	//LIGAR À CLIPBOARD CASO SEJA CONNECTED
 
 	// thread for listening to apps that want to connect to the clipboard
-	pthread_create(&thread_listen_id, NULL, thread_app_listen, regions);
+	//pthread_create(&thread_app_listen_id, NULL, thread_app_listen, regions); <--- PAULO
+	
+	// thread for listening to another clipboards that want to connect to this clipboard <--- RENATO
+	pthread_create(&thread_clip_id, NULL, thread_clips_listen, NULL); 
 
-
+	pthread_join(thread_clip_id, NULL);
 
 	return(0);
 }

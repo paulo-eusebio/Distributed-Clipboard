@@ -1,15 +1,35 @@
 #ifndef CLIPBOARD
 #define CLIPBOARD
 
-#define INBOUND_FIFO "INBOUND_FIFO"
-#define OUTBOUND_FIFO "OUTBOUND_FIFO"
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <signal.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+
+#include <sys/types.h>
+
+#define LISTENING_CLIPS_PORT 9000
 
 struct Message {
     int type;
     int region;
     int length;
     char message[100];
+};
+
+struct Connection{
+	int fd;
+	pthread_t thread_id;
+	struct Connection *next;
 };
 
 // type -> 0 if copy, 1 if paste
