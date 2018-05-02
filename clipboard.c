@@ -15,6 +15,10 @@ struct Connection* root_clips = NULL;
 // where the magic happen
 int main(int argc, char const *argv[]) {
 
+	// Threads Declaration
+	//pthread_t thread_app_listen_id;
+	pthread_t thread_clip_id;
+
 	int clip_mode = checkMode(argc);
 
 	if (clip_mode == -1) {
@@ -37,12 +41,11 @@ int main(int argc, char const *argv[]) {
 
 	signal(SIGINT, ctrl_c_callback_handler);
 
-
-	//pthread_t thread_app_listen_id;
-	pthread_t thread_clip_id;
-
-
-	// fazer thread para ligar a clipboards??
+	// in the case of the clipboard being type connected then with needs to connect
+	// to the received IP and Port and request its region
+	if(clip_mode == CONNECTED) {
+		getClipboardBackUp(argv);
+	}
 
 	//LIGAR À CLIPBOARD CASO SEJA CONNECTED
 
@@ -56,6 +59,56 @@ int main(int argc, char const *argv[]) {
 
 	return(0);
 }
+
+
+void getClipboardBackUp(char const *argv[]) {
+
+	int fd_client = -1;
+	struct sockaddr_in ipv4_client;
+	struct in_addr temp_addr;
+	socklen_t addrlen = 0;
+
+	// create clipboard server socket
+	if( (fd_client = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		perror("Error creating client socket");
+		exit(1);
+	}
+
+	memset((void*)&temp_addr,(int)'\0', sizeof(temp_addr));
+	// converting the IP arg to the appropriate type
+	inet_aton(argv[2], &temp_addr);
+
+	// setting up the Socket
+	setSockaddrIP(&ipv4_client, &addrlen, &temp_addr, (unsigned short) atoi(argv[3]));
+
+	/*if(bind(fd_client, (struct sockaddr*) &ipv4_client, sizeof(ipv4_client)) == -1) {
+		perror("bind");
+		exit(-1);
+	}*/
+
+	// connect to the server clipboard
+	if( connect(fd_client, (struct sockaddr*) &ipv4_client, sizeof(ipv4_client)) == -1){
+		perror("Error while connecting to another clipboard");
+	}
+
+	// FAZER UM TIMER NO CONNECT?????
+
+	// @TODO GUARDAR FD NA LISTA DE CONNECTIONS
+
+	// fills the regions with the content from a connected clipboard
+	regions = getBackup(fd_client, regions);
+	printf("Updated cliboard from backup:\n\n");
+		for(int i=0; i<NUM_REG;i++)
+			printf("\t %d - %s\n", i, regions[i]);	
+
+	close(fd_client);
+
+	// @TODO LANÇAR UMA THREAD PARA OUVIR O CHANNEL COM ESTE CLIPBOARD
+
+	// pthread_join
+}
+
+
 
 	/*
 

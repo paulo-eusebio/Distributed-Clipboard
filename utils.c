@@ -14,7 +14,7 @@ void * mymalloc(int size){
 * @brief Turns the parameters into a struct and copies its memory into
 * a string
 * 
- */
+*/
 char * getBuffer(int type, int region, char *message, int length) {
 
 	struct Message message_struct;

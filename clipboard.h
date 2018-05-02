@@ -32,6 +32,8 @@ struct Connection{
 	struct Connection *next;
 };
 
+void getClipboardBackUp(char const *argv[]);
+
 // type -> 0 if copy, 1 if paste
 
 int clipboard_connect(char * clipboard_dir);
