@@ -14,6 +14,10 @@
 #include <signal.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include "utils.h"
+#include "sock_stream.h"
+#include "clipthreads.h"
+#include "linkedList.h"
 
 #include <sys/types.h>
 
@@ -26,11 +30,14 @@ struct Message {
     char message[100];
 };
 
-struct Connection{
-	int fd;
-	pthread_t thread_id;
-	struct Connection *next;
-};
+// matrix for our regions
+char **regions;
+
+// stack for save the file descriptors of apps
+List* list_apps;
+
+// stack for save the file descriptors of clips
+List* list_clips;
 
 void getClipboardBackUp(char const *argv[]);
 

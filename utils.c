@@ -32,6 +32,9 @@ char * getBuffer(int type, int region, char *message, int length) {
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
 	unlink(SOCK_ADDRESS);
+
+	freeClipboard();
+
 	exit(0);
 }
 
@@ -165,5 +168,59 @@ int readRoutine(int fd, char *storageBuf, int length){
 		readBuf += nread;
 	}
 	return nstore;
+}
+
+
+/// Random Number Generator with Range
+int randGenerator(int min, int max) {
+   return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+}
+
+
+/// deals with close file descriptors and freeing memory used
+void freeClipboard() {
+
+	// Closes all file descriptors in use
+	if(list_clips->head != NULL) {
+		Node *aux = list_clips->head;
+		while(aux->next != NULL){
+			if(close(aux->fd)) {
+				perror("Closing TCP file descriptor");
+			}
+			
+			aux = aux->next;
+		}
+		if(close(aux->fd)) {
+			perror("Closing TCP file descriptor");
+		}
+	}
+
+	if(list_apps->head != NULL) {
+		Node *aux = list_apps->head;
+		while(aux->next != NULL){
+			if(close(aux->fd)) {
+				perror("Closing UNIX file descriptor");
+			}
+
+			aux = aux->next;
+		}
+		if(close(aux->fd)) {
+			perror("Closing UNIX file descriptor");
+		}
+	}
+
+	// @TODO DAR SHUTDOWN DAS THREADS??????? <--- Dúvida
+
+	// free memory of regions
+	for (int i = 0; i < 10; ++i) {
+	    free(regions[i]);
+	}
+	free(regions);
+
+	// Freeing lists
+	destroy(list_clips);
+	destroy(list_apps);
+
+	return;
 }
 

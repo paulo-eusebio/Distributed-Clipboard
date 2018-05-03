@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 
 #include "clipboard.h"
+#include "linkedList.h"
 #include "sock_stream.h"
 
 #define STRINGSIZE 255
@@ -28,6 +29,9 @@
 #define PASTE_REQUEST 1
 #define PASTE_REPLY 2
 #define REPLICATE 3
+
+#define PORT_MIN 1024
+#define PORT_MAX 64738
 
 void * mymalloc(int size);
 
@@ -46,5 +50,9 @@ int writeRoutine(int fd, char *buffer, int length);
 int readRoutine(int fd, char *storageBuf, int length);
 
 char* getPasteMessage(int region, char **regions);
+
+int randGenerator(int min, int max);
+
+void freeClipboard();
 
 #endif

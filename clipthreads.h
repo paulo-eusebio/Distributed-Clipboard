@@ -18,6 +18,7 @@
 #include "clipboard.h"
 #include "utils.h"
 #include "sock_stream.h"
+#include "linkedList.h"
 
 // thread for listening to another clipboards that want to connect to this clipboard
 void * thread_clips_listen(void * data);

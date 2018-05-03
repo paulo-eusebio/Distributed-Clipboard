@@ -1,16 +1,4 @@
 #include "clipboard.h"
-#include "utils.h"
-#include "sock_stream.h"
-#include "clipthreads.h"
-
-// matrix for our regions
-char **regions;
-
-// stack for save the file descriptors of apps
-struct Connection* root_apps = NULL;
-
-// stack for save the file descriptors of clips
-struct Connection* root_clips = NULL;
 
 // where the magic happen
 int main(int argc, char const *argv[]) {
@@ -37,9 +25,16 @@ int main(int argc, char const *argv[]) {
 	    memset(regions[i], 0, STRINGSIZE+1);
 	}
 
+	// initializing lists of file descriptors and threads
+	list_clips = emptylist();
+	list_apps = emptylist();
+
 	unlink(SOCK_ADDRESS);
 
 	signal(SIGINT, ctrl_c_callback_handler);
+
+	// @TODO thread ler do stdin para darmos um exit gracioso do programa
+	
 
 	// in the case of the clipboard being type connected then with needs to connect
 	// to the received IP and Port and request its region
@@ -47,12 +42,10 @@ int main(int argc, char const *argv[]) {
 		getClipboardBackUp(argv);
 	}
 
-	//LIGAR À CLIPBOARD CASO SEJA CONNECTED
-
-	// thread for listening to apps that want to connect to the clipboard
+	// @TODO thread for listening to apps that want to connect to the clipboard
 	//pthread_create(&thread_app_listen_id, NULL, thread_app_listen, regions); <--- PAULO
 	
-	// thread for listening to another clipboards that want to connect to this clipboard <--- RENATO
+	// thread for listening to another clipboards that want to connect to this clipboard
 	pthread_create(&thread_clip_id, NULL, thread_clips_listen, NULL); 
 
 	pthread_join(thread_clip_id, NULL);
@@ -68,6 +61,8 @@ void getClipboardBackUp(char const *argv[]) {
 	struct in_addr temp_addr;
 	socklen_t addrlen = 0;
 
+	pthread_t thread_id;
+
 	// create clipboard server socket
 	if( (fd_client = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Error creating client socket");
@@ -81,34 +76,27 @@ void getClipboardBackUp(char const *argv[]) {
 	// setting up the Socket
 	setSockaddrIP(&ipv4_client, &addrlen, &temp_addr, (unsigned short) atoi(argv[3]));
 
-	/*if(bind(fd_client, (struct sockaddr*) &ipv4_client, sizeof(ipv4_client)) == -1) {
-		perror("bind");
-		exit(-1);
-	}*/
-
 	// connect to the server clipboard
 	if( connect(fd_client, (struct sockaddr*) &ipv4_client, sizeof(ipv4_client)) == -1){
 		perror("Error while connecting to another clipboard");
 	}
 
-	// FAZER UM TIMER NO CONNECT?????
+	// @TODO Dúvida: FAZER UM TIMER NO CONNECT?????
 
-	// @TODO GUARDAR FD NA LISTA DE CONNECTIONS
+	// Save the fd and thread id of this connection
+	add(fd_client, thread_id, list_clips);
 
 	// fills the regions with the content from a connected clipboard
 	regions = getBackup(fd_client, regions);
+
+	// @TODO MEter isto abaixo numa função e poder ser chamada na thread do stdin
 	printf("Updated cliboard from backup:\n\n");
 		for(int i=0; i<NUM_REG;i++)
 			printf("\t %d - %s\n", i, regions[i]);	
 
-	close(fd_client);
-
-	// @TODO LANÇAR UMA THREAD PARA OUVIR O CHANNEL COM ESTE CLIPBOARD
-
-	// pthread_join
+	// Thread for listening to reads from this file descriptor
+	pthread_create(&thread_id, NULL, thread_clips, &fd_client); 
 }
-
-
 
 	/*
 

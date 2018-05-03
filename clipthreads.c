@@ -1,5 +1,6 @@
 #include "clipthreads.h"
 
+/// Thread that receives connections from local applications
 void * thread_app_listen(void * data){
 
 	// UNIX sockets
@@ -43,6 +44,7 @@ void * thread_app_listen(void * data){
 	return NULL;
 }
 
+/// Thread for receiving connections from cooperative remote clipboards
 void * thread_clips_listen(void * data) {
 
 	// IPv4 Sockets declaration
@@ -53,8 +55,7 @@ void * thread_clips_listen(void * data) {
 	struct in_addr temp_addr;
 	memset((void*)&temp_addr,(int)'\0', sizeof(temp_addr));
 
-	// Threads Variables
-	pthread_t thread_clips_id;
+	srand(time(NULL));
 
 	if((fd = socket(AF_INET, SOCK_STREAM,0))==-1){
 		perror("Error creating socket in clips listening thread");
@@ -64,7 +65,12 @@ void * thread_clips_listen(void * data) {
 	// converting the IP it wants to listen to the appropriate type
 	temp_addr.s_addr=htonl(INADDR_ANY);
 
-	setSockaddrIP( &addr, &addrlen, &temp_addr, LISTENING_CLIPS_PORT);
+	// PORT must be randomly generated between 1024 and 64738
+	int port = randGenerator(PORT_MIN, PORT_MAX);
+
+	setSockaddrIP( &addr, &addrlen, &temp_addr, port);
+
+	printf("Clipboard listening for connections through port: %d\n", port);
 
 	if(bind(fd, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
 		perror("bind");
@@ -86,10 +92,12 @@ void * thread_clips_listen(void * data) {
 
 		printf("Accepted a connection\n");
 
-		// enviar nwfd para a lista de newfds
-		
-		// lançar a nova thread e enviar o newfd nos argumentos
+		// Threads Variables
+		pthread_t thread_clips_id;
 
+		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
+		add(newfd, thread_clips_id, list_clips);
+		
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
 		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
 	}
@@ -99,15 +107,17 @@ void * thread_clips_listen(void * data) {
 	return NULL;
 }
 
+/// Thread for dealing with each connected clipboard
 void * thread_clips(void * data) {
 
 	int fd = *(int*)data;
 
 	int n, nw;
-	char *ptr, buffer[128];
+	char *ptr, buffer[128] = "";
+
+	printf("Started a thread to listen to this connection!\n");
 
 	// Only reads for now
-	while(1) {
 
 		while((n=read(fd,buffer,128))!=0){
 			if(n==-1){
@@ -121,11 +131,18 @@ void * thread_clips(void * data) {
 				}
 				n-=nw;
 				ptr+=nw;
+
 			}
 
 		}
 
-	}
+		// @TODO dar fclose do fd e eliminar da lista
+
+		// @TODO ver se na thread das apps 
+
+	// @TODO SE RECEBER ALGO DE UMA APP TENHO QUE PROPAGAR PARA TODOS OS CLIPBOARDS A QUE ESTOU CONECTADO
+	// @TODO SE RECEBER UMA ATUALIZAÇÃO DE UM CLIPBOARD PRECISO DE PROPAGAR PARA TODOS OS OUTROS 
+	// CLIPBOARDS ESTE O QUE ME ENVIOU
 
 	return NULL;
 }
