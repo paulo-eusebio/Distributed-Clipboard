@@ -172,11 +172,16 @@ void * thread_apps(void * data) {
 	memset(message, '\0', strlen(message)); //cleans buffer for re-use
 	
 	printf("message received = %s\n", msg_recv.message);
+	// @TODO ler o protoclo
+	// replicar p clibpoards OU respon
+	
 	
 	return NULL;
 	
 }
 
+
+//threads that exclusively listens for stdin commands
 void * thread_stdin(void * data) {
 	char bufstdin[10];
 	char message[10];
@@ -193,4 +198,5 @@ void * thread_stdin(void * data) {
 	
 }
 
+//wait mandar msg ao clipboard e ficar à espera bloqueado no read???
 
