@@ -160,7 +160,7 @@ void * thread_clips(void * data) {
 void * thread_apps(void * data) {
 	
 	int fd = *(int*)data;
-	
+	struct Message msg_recv;
 	char *message = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
 	
 	if(readRoutine(fd, message, sizeof(struct Message)) == 0) { 
@@ -168,7 +168,10 @@ void * thread_apps(void * data) {
 			exit(1);
 	}
 	
-	printf("message received = %s\n", message);
+	memcpy(&msg_recv, message, sizeof(msg_recv));
+	memset(message, '\0', strlen(message)); //cleans buffer for re-use
+	
+	printf("message received = %s\n", msg_recv.message);
 	
 	return NULL;
 	
