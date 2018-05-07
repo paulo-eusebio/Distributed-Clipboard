@@ -82,6 +82,7 @@ void destroy(List * list){
   Node * next = current;
   while(current != NULL){
     next = current->next;
+    //close(current->fd);
     free(current);
     current = next;
   }

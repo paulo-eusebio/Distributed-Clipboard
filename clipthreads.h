@@ -26,4 +26,14 @@ void * thread_clips_listen(void * data);
 // thread for reading and writing to the clipboard that this clipboard just accepted the connection
 void * thread_clips(void * data);
 
+// thread to receive new app conectioncs
+void * thread_app_listen(void * data);
+
+
+// thread that deals with connected apps
+void * thread_apps(void * data);
+
+// thread to deal with stdin inputs
+void * thread_stdin(void * data);
+
 #endif

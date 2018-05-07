@@ -33,12 +33,20 @@ void * thread_app_listen(void * data){
 			exit(-1);
 		}
 
-		// declare thread
-		// create node
-		// add node to list
-		// create thread and send the node
+		printf("Accepted a new app connection\n");
+		
+		// Threads Variables
+		pthread_t thread_apps_id;
+
+		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
+		add(fd_connect, thread_apps_id, list_apps);
+		
+		// thread to interact with the newly connected app
+		pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect); 
 
 	}
+	
+	close(fd_connect);
 
 
 	return NULL;
@@ -146,3 +154,38 @@ void * thread_clips(void * data) {
 
 	return NULL;
 }
+
+//function to threads that deal with apps
+
+void * thread_apps(void * data) {
+	
+	int fd = *(int*)data;
+	
+	char *message = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
+	
+	if(readRoutine(fd, message, sizeof(struct Message)) == 0) { 
+			printf("client disconnected, read is 0\n");
+			exit(1);
+	}
+	
+	printf("message received = %s\n", message);
+	
+	return NULL;
+	
+}
+
+void * thread_stdin(void * data) {
+	char bufstdin[10];
+	char message[10];
+	
+	while(1) {
+		fgets(bufstdin, MAX_INPUT, stdin);
+		sscanf(bufstdin, "%[^\n]", message);
+		printf("received stdin: %s\n", message);	
+		if(strcmp(message,"exit")==0) 
+			pthread_exit(NULL);		
+	}
+	
+}
+
+

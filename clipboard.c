@@ -4,8 +4,9 @@
 int main(int argc, char const *argv[]) {
 
 	// Threads Declaration
-	//pthread_t thread_app_listen_id;
+	pthread_t thread_app_listen_id;
 	pthread_t thread_clip_id;
+	pthread_t stdin_thread;
 
 	int clip_mode = checkMode(argc);
 
@@ -33,8 +34,7 @@ int main(int argc, char const *argv[]) {
 
 	signal(SIGINT, ctrl_c_callback_handler);
 
-	// @TODO thread ler do stdin para darmos um exit gracioso do programa
-	
+	pthread_create(&stdin_thread, NULL, thread_stdin, NULL); 
 
 	// in the case of the clipboard being type connected then with needs to connect
 	// to the received IP and Port and request its region
@@ -42,17 +42,33 @@ int main(int argc, char const *argv[]) {
 		getClipboardBackUp(argv);
 	}
 
-	// @TODO thread for listening to apps that want to connect to the clipboard
-	//pthread_create(&thread_app_listen_id, NULL, thread_app_listen, regions); <--- PAULO
+	// thread for listening to apps that want to connect to the clipboard
+	pthread_create(&thread_app_listen_id, NULL, thread_app_listen, regions);
 	
 	// thread for listening to another clipboards that want to connect to this clipboard
 	pthread_create(&thread_clip_id, NULL, thread_clips_listen, NULL); 
 
-	pthread_join(thread_clip_id, NULL);
-
+	//pthread_join(thread_clip_id, NULL);
+	pthread_join(stdin_thread, NULL);
+	printf("Turning off\n");
+	terminate();
+	printf("Bye\n");
 	return(0);
 }
 
+
+void terminate() {
+	
+	for(Node *aux = list_apps->head; aux != NULL; aux=aux->next)
+		close(aux->fd);
+	for(Node *aux = list_clips->head; aux != NULL; aux=aux->next)
+		close(aux->fd);
+	
+	destroy(list_apps);
+	destroy(list_clips);
+	//free's?
+	return;
+}
 
 void getClipboardBackUp(char const *argv[]) {
 

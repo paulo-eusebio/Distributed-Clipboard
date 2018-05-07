@@ -40,6 +40,7 @@ List* list_apps;
 List* list_clips;
 
 void getClipboardBackUp(char const *argv[]);
+void terminate();
 
 // type -> 0 if copy, 1 if paste
 
