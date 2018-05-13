@@ -190,8 +190,10 @@ void * thread_stdin(void * data) {
 		fgets(bufstdin, MAX_INPUT, stdin);
 		sscanf(bufstdin, "%[^\n]", message);
 		printf("received stdin: %s\n", message);	
+		
 		if(strcmp(message,"exit")==0) 
 			pthread_exit(NULL);
+
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));
 	}

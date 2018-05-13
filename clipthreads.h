@@ -29,7 +29,6 @@ void * thread_clips(void * data);
 // thread to receive new app conectioncs
 void * thread_app_listen(void * data);
 
-
 // thread that deals with connected apps
 void * thread_apps(void * data);
 

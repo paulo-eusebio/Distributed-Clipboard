@@ -51,12 +51,13 @@ int main(int argc, char const *argv[]) {
 	//pthread_join(thread_clip_id, NULL);
 	pthread_join(stdin_thread, NULL);
 	printf("Turning off\n");
-	terminate();
+	freeClipboard();
 	printf("Bye\n");
 	return(0);
 }
 
 
+// USELESS
 void terminate() {
 	
 	for(Node *aux = list_apps->head; aux != NULL; aux=aux->next)
@@ -95,6 +96,7 @@ void getClipboardBackUp(char const *argv[]) {
 	// connect to the server clipboard
 	if( connect(fd_client, (struct sockaddr*) &ipv4_client, sizeof(ipv4_client)) == -1){
 		perror("Error while connecting to another clipboard");
+		exit(-1);
 	}
 
 	// @TODO Dúvida: FAZER UM TIMER NO CONNECT?????
@@ -112,6 +114,8 @@ void getClipboardBackUp(char const *argv[]) {
 
 	// Thread for listening to reads from this file descriptor
 	pthread_create(&thread_id, NULL, thread_clips, &fd_client); 
+
+	return;
 }
 
 	/*

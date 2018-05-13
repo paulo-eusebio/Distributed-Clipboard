@@ -1,3 +1,3 @@
 
-#define SOCK_ADDRESS "./sock_teste"
+#define SOCK_ADDRESS "./CLIPBOARD_SOCKET"
 

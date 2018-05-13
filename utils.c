@@ -31,7 +31,6 @@ char * getBuffer(int type, int region, char *message, int length) {
 
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
-	unlink(SOCK_ADDRESS);
 
 	freeClipboard();
 
@@ -112,16 +111,19 @@ char** getBackup(int fd, char **regions) {
 		// sends request to get region message
 		if(writeRoutine(fd, data, sizeof(struct Message)) == -1)
 			printf("Error writing at backup: %s\n", strerror(errno));
+
 		memset(data, '\0', strlen(data));
 		//waits for reply
 		if(readRoutine(fd, data, sizeof(struct Message)) == -1)
 			printf("Error reading reply at backup: %s\n", strerror(errno));
+
 		memcpy(&msg, data, sizeof(struct Message));
 		//  Only inserts the message if the region has any content
 		if(strcmp(msg.message, "No info available in requested region.") != 0) {
 			strcpy(regions[region], msg.message);
 		} 
 	}
+
 	return regions;
 }
 
@@ -179,6 +181,8 @@ int randGenerator(int min, int max) {
 
 /// deals with close file descriptors and freeing memory used
 void freeClipboard() {
+
+	unlink(SOCK_ADDRESS);
 
 	// Closes all file descriptors in use
 	if(list_clips->head != NULL) {
