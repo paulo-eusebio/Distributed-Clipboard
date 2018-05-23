@@ -166,15 +166,17 @@ void * thread_apps(void * data) {
 
 		if(readRoutine(fd, information, sizeof(information)) == 0) { 
 			printf("client disconnected, read is 0\n");
-			return NULL;
+			break;
 		} 
 
 		printf("first message: %s\n", information);
 
 		// Its a request of the type copy
 		if (information[0] == 'c') {
-			
+
 			dealCopyRequests(fd, information);
+
+			// TODO REPLICAR PARA CLIPBOARD PAI
 
 		// Its a request of the type paste
 		} else if (information[0] == 'p') {
@@ -187,13 +189,15 @@ void * thread_apps(void * data) {
 			// TODO
 
 		}
+
 		memset(information, '\0', sizeof(information));
 	}
 
+	// this fd is no longer connected, so remove it from the list
+	freeNode(fd, list_apps);
 
-	// @TODO ler o protoclo
-	// replicar p clibpoards OU respon
-	
+	// then close it
+	close(fd);
 	
 	return NULL;
 }
