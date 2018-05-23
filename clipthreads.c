@@ -173,10 +173,13 @@ void * thread_apps(void * data) {
 
 		// Its a request of the type copy
 		if (information[0] == 'c') {
+			
 			dealCopyRequests(fd, information);
 
 		// Its a request of the type paste
 		} else if (information[0] == 'p') {
+
+			dealPasteRequests(fd, information);
 
 		// Its a request of the type wait
 		} else if (information[0] == 'w') {

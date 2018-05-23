@@ -309,3 +309,52 @@ void dealCopyRequests(int fd, char information[15]) {
 
 	return;
 }
+
+
+
+/*
+*
+*
+*/
+void dealPasteRequests(int fd, char information[15]) {
+
+	int region = -1;
+	int len_message = -1;
+
+	// decodes the message of the information about the region
+	if (sscanf(information, "p %d %d", &region, &len_message) != 2) {
+		printf("sscanf didn't assign the variables correctly\n");
+		
+		return;
+	}
+
+	// case that the region doesnt have content
+	if(regions[region] == NULL || regions[region][0] == '\0') {
+
+		// creates a char* full of \0 correspondent to the requested nº of bytes
+		char *message = (char*)mymalloc(sizeof(char)*len_message);
+		memset(message, '\0', len_message);
+
+		// sends that message
+		if(writeRoutine(fd, message, len_message) == -1) {
+			printf("Error writing in dealPasteRequests\n");
+			free(message);
+			return;
+		}
+
+		free(message);
+
+	// case that the region has content
+	} else {
+
+		// sends the region's content
+		if(writeRoutine(fd, regions[region], len_message) == -1) {
+			printf("Error writing in dealPasteRequests\n");
+			return;
+		}
+	}
+
+	// TODO MUTEX THIS
+
+	return;
+}

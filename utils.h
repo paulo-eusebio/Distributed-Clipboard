@@ -57,5 +57,6 @@ void freeClipboard();
 
 void dealCopyRequests(int fd, char information[15]);
 
+void dealPasteRequests(int fd, char information[15]);
 
 #endif
