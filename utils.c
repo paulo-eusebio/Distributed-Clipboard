@@ -289,4 +289,23 @@ void dealCopyRequests(int fd, char information[15]) {
 
 	printf("%s\n", receive);
 
+	// I'm the top clipboard then save in the clipboard and send to my child
+	if (fd_parent == -1) {
+
+		if(regions[region] != NULL) {
+			memset(regions[region], '\0', len_message);
+		}
+
+		regions[region] = (char*)realloc(regions[region], len_message);
+
+		memcpy(regions[region],receive,len_message);
+
+		regions_length[region] = len_message;
+
+		printf("inside region: %s\n", regions[region]);
+	}
+
+	// TODO MUTEX THIS
+
+	return;
 }
