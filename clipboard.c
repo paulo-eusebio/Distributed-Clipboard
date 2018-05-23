@@ -8,6 +8,10 @@ int main(int argc, char const *argv[]) {
 	pthread_t thread_clip_id;
 	pthread_t stdin_thread;
 
+	// initialization at -1 (parentless)
+	fd_parent = -1;
+
+	// checks if the clipboard is single or connected
 	int clip_mode = checkMode(argc);
 
 	if (clip_mode == -1) {
@@ -22,8 +26,9 @@ int main(int argc, char const *argv[]) {
 	// Create Clipboard Regions 
 	regions = (char**) mymalloc(10*sizeof(char*));
 	for (int i = 0; i < 10; ++i) {
-	    regions[i] = (char *) mymalloc(STRINGSIZE+1);
-	    memset(regions[i], 0, STRINGSIZE+1);
+		// the size of the regions are initializad a null because it doesnt have a msg associated yet
+	    regions[i] = NULL;
+	    regions_length[i] = 0;
 	}
 
 	// initializing lists of file descriptors and threads
@@ -57,19 +62,6 @@ int main(int argc, char const *argv[]) {
 }
 
 
-// USELESS
-void terminate() {
-	
-	for(Node *aux = list_apps->head; aux != NULL; aux=aux->next)
-		close(aux->fd);
-	for(Node *aux = list_clips->head; aux != NULL; aux=aux->next)
-		close(aux->fd);
-	
-	destroy(list_apps);
-	destroy(list_clips);
-	//free's?
-	return;
-}
 
 void getClipboardBackUp(char const *argv[]) {
 
@@ -101,14 +93,16 @@ void getClipboardBackUp(char const *argv[]) {
 
 	// @TODO Dúvida: FAZER UM TIMER NO CONNECT?????
 
+	// TODO PENSAR SE METEMOS O THREAD_CREATE ANTES DO GETBACKUP
+
 	// Save the fd and thread id of this connection
 	add(fd_client, thread_id, list_clips);
 
 	// fills the regions with the content from a connected clipboard
-	regions = getBackup(fd_client, regions);
+	getBackup(fd_client);
 
 	// @TODO MEter isto abaixo numa função e poder ser chamada na thread do stdin
-	printf("Updated cliboard from backup:\n\n");
+	printf("Updated clibpoard from backup:\n\n");
 		for(int i=0; i<NUM_REG;i++)
 			printf("\t %d - %s\n", i, regions[i]);	
 

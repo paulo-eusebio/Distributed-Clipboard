@@ -48,55 +48,92 @@ int clipboard_connect(char *clipboard_dir){
 
 int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
-	int bytes_written = -1;
-	
-	//applys message to the protocol and converts it to a stream of bytes
-	char * msg = getBuffer(0, region, (char*) buf, count);
-
-	if( (bytes_written = writeRoutine(clipboard_id, msg, sizeof(struct Message))) == -1){
-		printf("Error writing to clipboard: %s\n", strerror(errno));
-		free(msg);
-		return -1;
-	} else {
-		free(msg);
-		return bytes_written;
+	if (region < 0 || region > 9) {
+		printf("Trying to copy to an invalid region.\n");
+		return 0;
 	}
+
+	if (clipboard_id < 0) {
+		printf("Trying to copy to an invalid fd.\n");
+		return 0;
+	}
+
+	char message[15] = "";
+
+	// bytes sent
+	int total = 0;
+
+	// starts message as all \0
+	memset(message, '\0', 15);
+
+	sprintf(message,"c %d %d", region, (int) count);
+
+	// sets up the clipboard for be ready to receive a message of a certain size 
+	// to insert inside a certain region
+	if(writeRoutine(clipboard_id, message, (size_t) strlen(message)) == -1) {
+		// error writing
+		return 0;
+	}
+
+	// sends the info to copy to the region
+	if((total = writeRoutine(clipboard_id, buf, count)) == -1) {
+		// error writing
+		return 0;
+	}
+
+	return total;
 }
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	
-	struct Message msg_recv;
-	//applys message to the protocol and converts it to a stream of bytes
-	char *msg = getBuffer(1, region, (char*)buf, count);
-	
-	printf("The region is: %d\n", region);
-
-	// requests the content of a certain region
-	if(writeRoutine(clipboard_id, msg, sizeof(struct Message)) == -1){
-		printf("Error writing to clipboard: %s\n", strerror(errno));
-		free(msg);
-		return -1;
+	if (region < 0 || region > 9) {
+		printf("Trying to paste from an invalid region.\n");
+		return 0;
 	}
-	//"data" used to store stream of bytes
-	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
-	int bytes_read = readRoutine(clipboard_id, data, sizeof(struct Message));
-	if(bytes_read == -1) {
-		printf("Error reading from the keyboard %s\n", strerror(errno));
-		free(msg);
-		return -1;	
-	}
-	//get the message from the byte stream
-	memcpy(&msg_recv, data, sizeof(msg_recv));
-	strcpy(buf, msg_recv.message);
-	free(msg);
 
-	return bytes_read;
+	if (clipboard_id < 0) {
+		printf("Trying to paste from an invalid fd.\n");
+		return 0;
+	}
+
+	char message[15] = "";
+
+	// bytes sent
+	int total = 0;
+
+	// starts message as all \0
+	memset(message, '\0', 15);
+
+	sprintf(message,"p %d %d", region, (int) count);
+
+	// asks the clipboard to send a message of a certain size from a certain region
+	if(writeRoutine(clipboard_id, message, (size_t) strlen(message)) == -1) {
+		// error writing
+		return 0;
+	}
+
+	if( (total = readRoutine(clipboard_id, buf, count)) == -1) {
+		// error reading
+		return 0;
+	}
+
+
+	return total;
 }
 
 /// This function closes the connection between the application and the local clipboard
 void clipboard_close(int clipboard_id){
+
 	if(close(clipboard_id) == -1) {
 		printf("Error closing connection: %s\n", strerror(errno));
 	}
+
 	return;
+}
+
+int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
+
+	// TODO
+
+	return 0;
 }
