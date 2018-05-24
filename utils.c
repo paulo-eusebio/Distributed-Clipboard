@@ -80,7 +80,7 @@ void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_a
  */
 void getBackup(int fd) {
 	
-	char request[] = "k";
+	char request[15] = "k";
 	char information[15] = "";
 
 	int region = -1;
@@ -88,7 +88,7 @@ void getBackup(int fd) {
 
 	memset(information, '\0', sizeof(information));
 
-	if( writeRoutine(fd, request, strlen(request)) == -1) {
+	if( writeRoutine(fd, request, sizeof(request)) == -1) {
 		printf("Error writing in getBackup\n");
 		return;
 	}
@@ -100,7 +100,7 @@ void getBackup(int fd) {
 		// TODO ERROR TEST THIS
 
 		// decodes the message of the information about the region
-		if (sscanf(information, "n %d %d", &region, &len_message) != 2) {
+		if (sscanf(information, "m %d %d", &region, &len_message) != 2) {
 			printf("sscanf didn't assign the variables correctly\n");
 
 			// resets variables
