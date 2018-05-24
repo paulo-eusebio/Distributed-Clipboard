@@ -73,24 +73,6 @@ void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_a
 	return;
 }
 
-// gets the message stored in the requested paste region
-/*char* getPasteMessage(int region, char **regions) {
-	char *answer;
-	// Preventing access to non-existant regions
-	if (region >= NUM_REG || region < 0) {
-		answer = (char*)mymalloc(strlen("Region unavailable.")+1);
-		strcpy(answer, "Region unavailable.");
-	// Testing if region is empty
-	} else if(regions[region][0] == '\0') {
-		answer = (char*)mymalloc(strlen("No info available in requested region.")+1);
-		strcpy(answer, "No info available in requested region.");
-	// There is a message stored, gets it
-	} else { 
-		answer = (char*)mymalloc(strlen(regions[region])+1);
-		strcpy(answer, regions[region]);
-	}
-	return answer;
-}*/
 
 /*
 * For getting the content of the server the clipboard connects to
@@ -287,7 +269,7 @@ void dealCopyRequests(int fd, char information[15]) {
 		return;
 	} 
 
-	printf("%s\n", receive);
+	sprintf("%s\n", receive);
 
 	// I'm the top clipboard then save in the clipboard and send to my child
 	if (fd_parent == -1) {
@@ -299,7 +281,7 @@ void dealCopyRequests(int fd, char information[15]) {
 
 		regions[region] = (char*)realloc(regions[region], len_message);
 
-		memcpy(regions[region],receive,len_message);
+		memcpy(regions[region], receive, len_message);
 
 		regions_length[region] = len_message;
 
