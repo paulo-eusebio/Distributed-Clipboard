@@ -141,8 +141,10 @@ void * thread_clips(void * data) {
 				ptr+=nw;
 
 			}
-
+			
 		}
+		printf("sai da thread\n");
+
 
 		// @TODO dar fclose do fd e eliminar da lista
 

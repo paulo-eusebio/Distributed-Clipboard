@@ -31,13 +31,14 @@ int main(int argc, char const *argv[]) {
 	sscanf(bufstdin, "%d", &region);
 	
 	int bytes_copied = clipboard_copy(clipboard_id, region, message, sizeof(message));
-
+	bytes_copied = clipboard_copy(clipboard_id, region, message, sizeof(message));
+	/*
 	printf("Copied %d bytes\n", bytes_copied);
 
 	memset(message, '\0', strlen(message));
 	int bytes_read = clipboard_paste(clipboard_id, region, message, sizeof(message)); // <-- este 0 é uma possível fonte de erro
 
-	printf("Received %d, and the message '%s'\n", bytes_read, message);
+	printf("Received %d, and the message '%s'\n", bytes_read, message);*/
 
 	exit(0);
 }
