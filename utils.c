@@ -111,13 +111,6 @@ void getBackup(int fd) {
 			continue;
 		}
 
-
-		// DEBUG 
-		if (region == i) {
-			printf("%s\n", information);
-		}
-		// --
-
 		// that specific region doesn't have content, so there's no content to be sent afterward
 		if (len_message == 0) {
 			continue;
@@ -268,8 +261,6 @@ void dealCopyRequests(int fd, char information[15]) {
 		printf("client disconnected, read is 0\n");
 		return;
 	} 
-
-	sprintf("%s\n", receive);
 
 	// I'm the top clipboard then save in the clipboard and send to my child
 	if (fd_parent == -1) {
