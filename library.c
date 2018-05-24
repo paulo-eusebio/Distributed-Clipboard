@@ -70,7 +70,7 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 	// sets up the clipboard for be ready to receive a message of a certain size 
 	// to insert inside a certain region
-	if(writeRoutine(clipboard_id, message, (size_t) strlen(message)) == -1) {
+	if(writeRoutine(clipboard_id, message, (size_t) sizeof(message)) == -1) {
 		// error writing
 		return 0;
 	}
@@ -107,7 +107,7 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	sprintf(message,"p %d %d", region, (int) count);
 
 	// asks the clipboard to send a message of a certain size from a certain region
-	if(writeRoutine(clipboard_id, message, (size_t) strlen(message)) == -1) {
+	if(writeRoutine(clipboard_id, message, sizeof(message)) == -1) {
 		// error writing
 		return 0;
 	}

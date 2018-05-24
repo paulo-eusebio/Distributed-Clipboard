@@ -292,8 +292,9 @@ void dealCopyRequests(int fd, char information[15]) {
 	// I'm the top clipboard then save in the clipboard and send to my child
 	if (fd_parent == -1) {
 
+		//clears the previous stored message, by all its length
 		if(regions[region] != NULL) {
-			memset(regions[region], '\0', len_message);
+			memset(regions[region], '\0', regions_length[region]);
 		}
 
 		regions[region] = (char*)realloc(regions[region], len_message);
@@ -302,7 +303,6 @@ void dealCopyRequests(int fd, char information[15]) {
 
 		regions_length[region] = len_message;
 
-		printf("inside region: %s\n", regions[region]);
 	}
 
 	// TODO MUTEX THIS
@@ -346,8 +346,10 @@ void dealPasteRequests(int fd, char information[15]) {
 
 	// case that the region has content
 	} else {
-
-		// sends the region's content
+		/*if(len_message > regions_length[region]) //case the app requests more bytes than the actual region size
+			len_message = regions_length[region];*/
+		// sends the region's content 
+		// mandar antes o tamanho??
 		if(writeRoutine(fd, regions[region], len_message) == -1) {
 			printf("Error writing in dealPasteRequests\n");
 			return;
