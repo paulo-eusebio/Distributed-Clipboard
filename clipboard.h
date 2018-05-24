@@ -23,21 +23,24 @@
 
 #define LISTENING_CLIPS_PORT 9000
 
-struct Message {
-    int type;
-    int region;
-    int length;
-    char message[100];
-};
+/** GLOBAL VARIABLES **/
 
 // matrix for our regions
 char **regions;
+
+size_t regions_length[10];
 
 // stack for save the file descriptors of apps
 List* list_apps;
 
 // stack for save the file descriptors of clips
 List* list_clips;
+
+// file descriptor of the parent clipboard
+// if -1 it doesnt have a parent, else it does
+int fd_parent;
+
+/************************/
 
 void getClipboardBackUp(char const *argv[]);
 void terminate();

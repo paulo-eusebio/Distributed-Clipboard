@@ -43,7 +43,6 @@ void * thread_app_listen(void * data){
 		
 		// thread to interact with the newly connected app
 		pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect); 
-
 	}
 	
 	close(fd_connect);
@@ -158,28 +157,51 @@ void * thread_clips(void * data) {
 }
 
 //function to threads that deal with apps
-
 void * thread_apps(void * data) {
 	
 	int fd = *(int*)data;
-	struct Message msg_recv;
-	char *message = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
 	
-	if(readRoutine(fd, message, sizeof(struct Message)) == 0) { 
+	// 15 because of a letter, space, digit, space, long int
+	char information[15] = "";
+	
+	while(1) {
+
+		if(readRoutine(fd, information, sizeof(information)) == 0) { 
 			printf("client disconnected, read is 0\n");
-			exit(1);
+			break;
+		} 
+
+		printf("first message: %s\n", information);
+
+		// Its a request of the type copy
+		if (information[0] == 'c') {
+
+			dealCopyRequests(fd, information);
+
+			// TODO REPLICAR PARA CLIPBOARD PAI
+
+		// Its a request of the type paste
+		} else if (information[0] == 'p') {
+
+			dealPasteRequests(fd, information);
+
+		// Its a request of the type wait
+		} else if (information[0] == 'w') {
+
+			// TODO
+
+		}
+
+		memset(information, '\0', sizeof(information));
 	}
-	
-	memcpy(&msg_recv, message, sizeof(msg_recv));
-	memset(message, '\0', strlen(message)); //cleans buffer for re-use
-	
-	printf("message received = %s\n", msg_recv.message);
-	// @TODO ler o protoclo
-	// replicar p clibpoards OU respon
-	
+
+	// this fd is no longer connected, so remove it from the list
+	freeNode(fd, list_apps);
+
+	// then close it
+	close(fd);
 	
 	return NULL;
-	
 }
 
 
@@ -192,8 +214,13 @@ void * thread_stdin(void * data) {
 		fgets(bufstdin, MAX_INPUT, stdin);
 		sscanf(bufstdin, "%[^\n]", message);
 		printf("received stdin: %s\n", message);	
+		
 		if(strcmp(message,"exit")==0) 
 			pthread_exit(NULL);
+
+
+		// TODO receive print to print regions or a certain region
+
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));
 	}

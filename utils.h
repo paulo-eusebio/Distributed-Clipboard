@@ -30,8 +30,8 @@
 #define PASTE_REPLY 2
 #define REPLICATE 3
 
-#define PORT_MIN 1024
-#define PORT_MAX 64738
+#define PORT_MIN 8000
+#define PORT_MAX 8100
 
 void * mymalloc(int size);
 
@@ -43,16 +43,20 @@ int checkMode(int argc);
 
 void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_addr * addr, unsigned short port);
 
-char** getBackup(int fd, char **regions);
+void getBackup(int fd);
 
-int writeRoutine(int fd, char *buffer, int length);
+int writeRoutine(int fd, char *buffer, size_t length);
 
-int readRoutine(int fd, char *storageBuf, int length);
+int readRoutine(int fd, char *storageBuf, size_t length);
 
 char* getPasteMessage(int region, char **regions);
 
 int randGenerator(int min, int max);
 
 void freeClipboard();
+
+void dealCopyRequests(int fd, char information[15]);
+
+void dealPasteRequests(int fd, char information[15]);
 
 #endif

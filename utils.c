@@ -15,7 +15,7 @@ void * mymalloc(int size){
 * a string
 * 
 */
-char * getBuffer(int type, int region, char *message, int length) {
+/*char * getBuffer(int type, int region, char *message, int length) {
 
 	struct Message message_struct;
 	message_struct.type = type;
@@ -26,12 +26,11 @@ char * getBuffer(int type, int region, char *message, int length) {
 	memcpy(msg, &message_struct, sizeof(message_struct));
 
 	return msg;
-}
+}*/
 
 
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
-	unlink(SOCK_ADDRESS);
 
 	freeClipboard();
 
@@ -74,8 +73,8 @@ void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_a
 	return;
 }
 
-//gets the message stored in the requested paste region
-char* getPasteMessage(int region, char **regions) {
+// gets the message stored in the requested paste region
+/*char* getPasteMessage(int region, char **regions) {
 	char *answer;
 	// Preventing access to non-existant regions
 	if (region >= NUM_REG || region < 0) {
@@ -91,48 +90,84 @@ char* getPasteMessage(int region, char **regions) {
 		strcpy(answer, regions[region]);
 	}
 	return answer;
-}
+}*/
 
 /*
 * For getting the content of the server the clipboard connects to
 * 
  */
-char** getBackup(int fd, char **regions) {
+void getBackup(int fd) {
 	
-	struct Message msg;
-	char *data = (char*)mymalloc(sizeof(char)*sizeof(struct Message));
+	char request[] = "k";
+	char information[15] = "";
 
-	for (int region = 0; region < NUM_REG; region++) {
+	int region = -1;
+	int len_message = -1;
 
-		// cleans buffer
-		memset(data, '\0', strlen(data));
-		
-		// creats byte stream with the request to paste a message
-		data = getBuffer(PASTE_REQUEST, region, "", sizeof(struct Message)); 
-		// sends request to get region message
-		if(writeRoutine(fd, data, sizeof(struct Message)) == -1)
-			printf("Error writing at backup: %s\n", strerror(errno));
-		memset(data, '\0', strlen(data));
-		//waits for reply
-		if(readRoutine(fd, data, sizeof(struct Message)) == -1)
-			printf("Error reading reply at backup: %s\n", strerror(errno));
-		memcpy(&msg, data, sizeof(struct Message));
-		//  Only inserts the message if the region has any content
-		if(strcmp(msg.message, "No info available in requested region.") != 0) {
-			strcpy(regions[region], msg.message);
-		} 
+	memset(information, '\0', sizeof(information));
+
+	if( writeRoutine(fd, request, strlen(request)) == -1) {
+		printf("Error writing in getBackup\n");
+		return;
 	}
-	return regions;
+
+	for (int i = 0; i < NUM_REG; i++) {
+
+		// expected to receive "n region size", with a maximum of 15 characters
+		readRoutine(fd, information, sizeof(information));
+		// TODO ERROR TEST THIS
+
+		// decodes the message of the information about the region
+		if (sscanf(information, "n %d %d", &region, &len_message) != 2) {
+			printf("sscanf didn't assign the variables correctly\n");
+
+			// resets variables
+			memset(information, '\0', sizeof(information));
+			region = -1;
+		 	len_message = -1;
+
+			continue;
+		}
+
+
+		// DEBUG 
+		if (region == i) {
+			printf("%s\n", information);
+		}
+		// --
+
+		// that specific region doesn't have content, so there's no content to be sent afterward
+		if (len_message == 0) {
+			continue;
+		}
+
+		// This guaranteed to be the first time of allocking memory for regions, so we can use malloc
+		regions[i] = (char*) mymalloc(len_message*sizeof(char));
+
+		readRoutine(fd, regions[i], len_message);
+		// TODO ERROR TEST THIS
+
+		regions_length[i] = len_message;
+
+		// resets variables
+		memset(information, '\0', sizeof(information));
+		region = -1;
+		len_message = -1;
+	}
+
+	return;
 }
 
 /* Routine that calls write until it sends the "length" bytes
  * Starts writing at the beggining of the buffer
  * and advances according to the number of bytes that was able to write
  * until it reaches the end of the buffer (size length) */
-int writeRoutine(int fd, char *buffer, int length) {
+int writeRoutine(int fd, char *buffer, size_t length) {
 	int nleft = length, nwritten = 0, total=0;
 	char *ptr = buffer;
+
 	while(nleft>0){
+
 		nwritten=write(fd,ptr,nleft);		
 		/*if(errno == EPIPE && nwritten == -1){ devemos de usar isto para quando um clip da discnect
 			printf("servidor de mensagens disconectou\n");
@@ -145,6 +180,7 @@ int writeRoutine(int fd, char *buffer, int length) {
 		ptr += nwritten;
 		total += nwritten;
 	}
+
 	return total;
 }
 
@@ -152,7 +188,7 @@ int writeRoutine(int fd, char *buffer, int length) {
  * Reads always to readBuf and glues all the readings together
  * starting at the address pointed by storageBuf 
  * until it reads the all "length" that is supposed*/
-int readRoutine(int fd, char *storageBuf, int length){
+int readRoutine(int fd, char *storageBuf, size_t length){
 	int nstore=0,nread=0,nleft=length;
 	char *readBuf = storageBuf;
 	while(nleft>0){
@@ -179,6 +215,8 @@ int randGenerator(int min, int max) {
 
 /// deals with close file descriptors and freeing memory used
 void freeClipboard() {
+
+	unlink(SOCK_ADDRESS);
 
 	// Closes all file descriptors in use
 	if(list_clips->head != NULL) {
@@ -211,7 +249,7 @@ void freeClipboard() {
 
 	// @TODO DAR SHUTDOWN DAS THREADS??????? <--- Dúvida
 
-	// free memory of regions
+	// free memory of re	gions
 	for (int i = 0; i < 10; ++i) {
 	    free(regions[i]);
 	}
@@ -224,3 +262,99 @@ void freeClipboard() {
 	return;
 }
 
+
+
+/*
+*
+*
+*/
+void dealCopyRequests(int fd, char information[15]) {
+
+	int region = -1;
+	int len_message = -1;
+
+	// decodes the message of the information about the region
+	if (sscanf(information, "c %d %d", &region, &len_message) != 2) {
+		printf("sscanf didn't assign the variables correctly\n");
+		
+		return;
+	}
+
+	char *receive = (char*)mymalloc(sizeof(char)*len_message);
+
+	if(readRoutine(fd, receive, len_message) == 0) { 
+		printf("client disconnected, read is 0\n");
+		return;
+	} 
+
+	printf("%s\n", receive);
+
+	// I'm the top clipboard then save in the clipboard and send to my child
+	if (fd_parent == -1) {
+
+		if(regions[region] != NULL) {
+			memset(regions[region], '\0', len_message);
+		}
+
+		regions[region] = (char*)realloc(regions[region], len_message);
+
+		memcpy(regions[region],receive,len_message);
+
+		regions_length[region] = len_message;
+
+		printf("inside region: %s\n", regions[region]);
+	}
+
+	// TODO MUTEX THIS
+
+	return;
+}
+
+
+
+/*
+*
+*
+*/
+void dealPasteRequests(int fd, char information[15]) {
+
+	int region = -1;
+	int len_message = -1;
+
+	// decodes the message of the information about the region
+	if (sscanf(information, "p %d %d", &region, &len_message) != 2) {
+		printf("sscanf didn't assign the variables correctly\n");
+		
+		return;
+	}
+
+	// case that the region doesnt have content
+	if(regions[region] == NULL || regions[region][0] == '\0') {
+
+		// creates a char* full of \0 correspondent to the requested nº of bytes
+		char *message = (char*)mymalloc(sizeof(char)*len_message);
+		memset(message, '\0', len_message);
+
+		// sends that message
+		if(writeRoutine(fd, message, len_message) == -1) {
+			printf("Error writing in dealPasteRequests\n");
+			free(message);
+			return;
+		}
+
+		free(message);
+
+	// case that the region has content
+	} else {
+
+		// sends the region's content
+		if(writeRoutine(fd, regions[region], len_message) == -1) {
+			printf("Error writing in dealPasteRequests\n");
+			return;
+		}
+	}
+
+	// TODO MUTEX THIS
+
+	return;
+}
