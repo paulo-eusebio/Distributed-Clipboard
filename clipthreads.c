@@ -295,8 +295,6 @@ void * thread_apps(void * data) {
 
 			dealCopyRequests(fd, information);
 
-			// TODO REPLICAR PARA CLIPBOARD PAI
-
 		// Its a request of the type paste
 		} else if (information[0] == 'p') {
 
