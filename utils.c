@@ -467,7 +467,11 @@ void sendBackup(int fd) {
 	for(int i = 0; i < NUM_REG; i++) {
 		sprintf(information, "m %d %d", i, (int)regions_length[i]);
 		writeRoutine(fd, information, sizeof(information)); //TODO check errors!!
-		writeRoutine(fd, regions[i], regions_length[i]);
+
+		if(regions_length[i] != 0) {
+			writeRoutine(fd, regions[i], regions_length[i]);
+		}
+		
 		memset(information, '\0', sizeof(information));
 	}
 	return;
