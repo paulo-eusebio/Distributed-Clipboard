@@ -119,6 +119,11 @@ void * thread_clips(void * data) {
 
 	int fd = *(int*)data;
 	char information[15] = "";
+
+	// auxiliar variables
+	int region = -1;
+	int len_message = -1;
+
 	printf("Started a thread to listen to this connection!\n");
 
 	memset(information, '\0', sizeof(information));
@@ -132,41 +137,138 @@ void * thread_clips(void * data) {
 		// Its a request of the type copy
 		if (information[0] == 'k') {
 			sendBackup(fd);
+
+		// received a message from children
 		} else if (information[0] == 'n') {
-			//TODO
+
+			if(sscanf(information, "n %d %d", &region, &len_message) != 2) {
+				printf("sscanf didn't assign the variables correctly\n");
+
+				region = -1;
+				len_message = -1;
+				memset(information, '\0', sizeof(information));
+
+				continue;
+			}
+
+			// if i'm a single clipboard, don't have a parent
+			if(fd_parent == -1) {
+				// reads into the region
+
+				if(regions[region] != NULL){
+					// resets
+					memset(regions[region], '\0', regions_length[region]);	
+				}
+
+				// saves region
+				regions[region] = (char*) realloc(regions[region], len_message);
+
+				if(readRoutine(fd, regions[region], len_message) == 0) { 
+					printf("client disconnected, read is 0\n");
+					break;
+				}
+
+				regions_length[region] = len_message;
+
+				// propagates the message to its children
+				if(sendToChildren(regions[region], region, len_message) == -1){
+					printf("Error writing in thread_clips, sendToChildren\n");
+
+					// TODO ver se é preciso dar continue e limpar as variaveis
+				}
+				
+			// if i'm not a single clipboard, have a parent
+			} else {
+				// reads into an auxiliar variable
+
+				// doesn't save anything, only send to parent
+
+				char *aux_buffer = (char*) mymalloc(sizeof(char)*len_message);
+
+				if(readRoutine(fd, aux_buffer, len_message) == 0) { 
+					printf("client disconnected, read is 0\n");
+					break;
+				}		
+
+				// propagates the message to its parent
+				if(sendToParent(aux_buffer, region, len_message) == -1){
+					printf("Error writing in thread_clips, sendToParent\n");
+
+					// TODO ver se é preciso dar continue e limpar as variaveis
+				}
+
+				free(aux_buffer);
+			}
+
+
+
+		// receive a message from parent
 		} else if (information[0] == 'm') {
 			//TODO
+
+			if(sscanf(information, "m %d %d", &region, &len_message) != 2) {
+				printf("sscanf didn't assign the variables correctly\n");
+
+				region = -1;
+				len_message = -1;
+				memset(information, '\0', sizeof(information));
+
+				continue;
+			}
+
+			if(regions[region] != NULL){
+				// resets
+				memset(regions[region], '\0', regions_length[region]);	
+			}
+
+			// saves region
+			regions[region] = (char*) realloc(regions[region], len_message);
+
+			if(readRoutine(fd, regions[region], len_message) == 0) { 
+				printf("client disconnected, read is 0\n");
+				break;
+			}
+
+			regions_length[region] = len_message;
+
+			// propagates the message to its children
+			if(sendToChildren(regions[region], region, len_message) == -1){
+				printf("Error writing in thread_clips\n");
+
+				// TODO ver se é preciso dar continue e limpar as variaveis
+			}
+
+
 		}
 
 		// ver qual o tipo da mensagem
 
 		// se k -> pedido BackUp
-		// invocar função para dar write de todas as suas regiões
+		// invocar função para dar write de todas as suas regiões check
 
 		// se n -> ver se é single ou connected
-		// se single, guardar e enviar para os filhos
-		// se connected, enviar para o pai
+		// se single, guardar e enviar para os filhos check
+		// se connected, enviar para o pai check
 
 		// se m -> atualização vinda do pai
-		// atualizar a região
-		// enviar para os filhos
-		// conditional variable para o wait
+		// atualizar a região check
+		// enviar para os filhos check
+		// conditional variable para o wait <-------
+
+		region = -1;
+		len_message = -1;
 		memset(information, '\0', sizeof(information));
 	}
 	
-	freeNode(fd, list_clips);
-	close(fd);
-
-	// @TODO dar fclose do fd e eliminar da lista
-
-	// @TODO ver se na thread das apps 
-
-	// @TODO SE RECEBER ALGO DE UMA APP TENHO QUE PROPAGAR PARA TODOS OS CLIPBOARDS A QUE ESTOU CONECTADO
-	// @TODO SE RECEBER UMA ATUALIZAÇÃO DE UM CLIPBOARD PRECISO DE PROPAGAR PARA TODOS OS OUTROS 
-	// CLIPBOARDS ESTE O QUE ME ENVIOU
-
-	// TODO depois de sair do ciclo while (quando a conexão morrer) verificar se o fd é o do pai ou não
+	// depois de sair do ciclo while (quando a conexão morrer) verificar se o fd é o do pai ou não
 	// caso seja o do pai meter fd_parent a -1, caso contrário remover da lista
+	if (fd == fd_parent) {
+		fd_parent = -1;
+	} else {
+		freeNode(fd, list_clips);
+	}
+
+	close(fd);
 
 	return NULL;
 }

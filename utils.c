@@ -10,25 +10,6 @@ void * mymalloc(int size){
 }
 
 
-/*
-* @brief Turns the parameters into a struct and copies its memory into
-* a string
-* 
-*/
-/*char * getBuffer(int type, int region, char *message, int length) {
-
-	struct Message message_struct;
-	message_struct.type = type;
-	strcpy(message_struct.message, message);
-	message_struct.length = length;
-	message_struct.region = region;
-	char *msg = (char*)mymalloc(sizeof(message_struct)*sizeof(char));
-	memcpy(msg, &message_struct, sizeof(message_struct));
-
-	return msg;
-}*/
-
-
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
 
@@ -276,7 +257,24 @@ void dealCopyRequests(int fd, char information[15]) {
 
 		regions_length[region] = len_message;
 
+		// propagates the message to its parent and doesn't save
+		if(sendToChildren(regions[region], region, len_message) == -1){
+			printf("Error writing in dealCopyRequests\n");
+			return;
+		}
+
+	} else {
+
+		// don't save anything
+
+		// propagates the message to its parent and doesn't save
+		if(sendToParent(receive, region, len_message) == -1){
+			printf("Error writing in dealCopyRequests\n");
+			return;
+		}
+
 	}
+
 
 	// TODO MUTEX THIS
 
