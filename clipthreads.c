@@ -118,12 +118,25 @@ void * thread_clips_listen(void * data) {
 void * thread_clips(void * data) {
 
 	int fd = *(int*)data;
-
+	char information[15] = "";
 	printf("Started a thread to listen to this connection!\n");
+
+	memset(information, '\0', sizeof(information));
 
 	while(1) {
 
-		//readRoutine
+		if(readRoutine(fd, information, sizeof(information)) == 0) { 
+			printf("client disconnected, read is 0\n");
+			break;
+		}
+		// Its a request of the type copy
+		if (information[0] == 'k') {
+			sendBackup(fd);
+		} else if (information[0] == 'n') {
+			//TODO
+		} else if (information[0] == 'm') {
+			//TODO
+		}
 
 		// ver qual o tipo da mensagem
 
@@ -138,8 +151,11 @@ void * thread_clips(void * data) {
 		// atualizar a região
 		// enviar para os filhos
 		// conditional variable para o wait
-
+		memset(information, '\0', sizeof(information));
 	}
+	
+	freeNode(fd, list_clips);
+	close(fd);
 
 	// @TODO dar fclose do fd e eliminar da lista
 

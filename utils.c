@@ -456,4 +456,32 @@ int sendToParent(char *message, int region, int len_message) {
 
 	// send complete
 	return 0;
-}	
+}
+
+void sendBackup(int fd) {
+	
+	char information[15] = "";
+	
+	memset(information, '\0', sizeof(information));
+	
+	for(int i = 0; i < NUM_REG; i++) {
+		sprintf(information, "m %d %d", i, (int)regions_length[i]);
+		writeRoutine(fd, information, sizeof(information)); //TODO check errors!!
+		writeRoutine(fd, regions[i], regions_length[i]);
+		memset(information, '\0', sizeof(information));
+	}
+	return;
+}
+
+
+
+
+
+
+
+
+
+
+
+	
+	

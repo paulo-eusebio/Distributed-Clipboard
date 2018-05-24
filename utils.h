@@ -63,4 +63,6 @@ int sendToChildren(char *message, int region, int len_message);
 
 int sendToParent(char *message, int region, int len_message);
 
+void sendBackup(int fd);
+
 #endif
