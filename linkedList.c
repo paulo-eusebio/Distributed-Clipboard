@@ -30,9 +30,8 @@ void display(List * list) {
 void add(int fd, pthread_t thread_id, List * list){
   Node * current = NULL;
 
-  // METER MUTEXES
-
   if(list->head == NULL){
+    // METER MUTEXES
     list->head = createnode(fd, thread_id);
   }
   else {
@@ -40,6 +39,7 @@ void add(int fd, pthread_t thread_id, List * list){
     while (current->next!=NULL){
       current = current->next;
     }
+    // METER MUTEXES
     current->next = createnode(fd, thread_id);
   }
 }

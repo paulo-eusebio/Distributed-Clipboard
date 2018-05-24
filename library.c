@@ -112,17 +112,50 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 		return 0;
 	}
 
-	if( (total = readRoutine(clipboard_id, buf, count)) == -1) {
+	// starts message as all \0
+	memset(message, '\0', 15);
+
+	if( readRoutine(clipboard_id, message, sizeof(message)) == -1) {
 		// error reading
 		return 0;
 	}
+
+	int reg = -1;
+	int len_message = -1;
+
+	// decodes the message of the information about the region
+	if (sscanf(message, "a %d %d", &reg, &len_message) != 2) {
+		printf("sscanf didn't assign the variables correctly: clipboard_paste\n");
+		return 0;
+	}
+
+	// No content in the region
+	if(len_message == 0)
+		return 0;
+
+	// if the content available is less than what exists in the region
+	if(len_message < count) {
+
+		if( (total = readRoutine(clipboard_id, buf, len_message)) == -1) {
+			// error reading
+			return 0;
+		}
+
+	} else {
+
+		if( (total = readRoutine(clipboard_id, buf, count)) == -1) {
+			// error reading
+			return 0;
+		}
+	}
+
 
 
 	return total;
 }
 
 /// This function closes the connection between the application and the local clipboard
-void clipboard_close(int clipboard_id){
+void clipboard_close(int clipboard_id) {
 
 	if(close(clipboard_id) == -1) {
 		printf("Error closing connection: %s\n", strerror(errno));

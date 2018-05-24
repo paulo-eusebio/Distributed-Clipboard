@@ -95,20 +95,11 @@ void getClipboardBackUp(char const *argv[]) {
 
 	// TODO PENSAR SE METEMOS O THREAD_CREATE ANTES DO GETBACKUP
 
-	// TODO check if useless
-	// Save the fd and thread id of this connection
-	// add(fd_client, thread_id, list_clips);
-
 	// TODO MUTEXAR
 	fd_parent = fd_client;
 
 	// fills the regions with the content from a connected clipboard
 	getBackup(fd_client);
-
-	// @TODO MEter isto abaixo numa função e poder ser chamada na thread do stdin
-	printf("Updated clibpoard from backup:\n\n");
-		for(int i=0; i<NUM_REG;i++)
-			printf("\t %d - %s\n", i, regions[i]);	
 
 	// Thread for listening to reads from this file descriptor
 	pthread_create(&thread_id, NULL, thread_clips, &fd_client); 

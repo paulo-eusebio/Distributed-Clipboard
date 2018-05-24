@@ -119,35 +119,31 @@ void * thread_clips(void * data) {
 
 	int fd = *(int*)data;
 
-	int n, nw;
-	char *ptr, buffer[128] = "";
-
 	printf("Started a thread to listen to this connection!\n");
 
-	// Only reads for now
+	while(1) {
 
-		while((n=read(fd,buffer,128))!=0){
-			if(n==-1){
-				exit(1);
-			}
-			ptr=&buffer[0];
-			printf("Read: %s\n", buffer);
-			while(n>0){
-				if((nw=write(fd,ptr,n))<=0){
-					exit(1);
-				}
-				n-=nw;
-				ptr+=nw;
+		//readRoutine
 
-			}
-			
-		}
-		printf("sai da thread\n");
+		// ver qual o tipo da mensagem
 
+		// se k -> pedido BackUp
+		// invocar função para dar write de todas as suas regiões
 
-		// @TODO dar fclose do fd e eliminar da lista
+		// se n -> ver se é single ou connected
+		// se single, guardar e enviar para os filhos
+		// se connected, enviar para o pai
 
-		// @TODO ver se na thread das apps 
+		// se m -> atualização vinda do pai
+		// atualizar a região
+		// enviar para os filhos
+		// conditional variable para o wait
+
+	}
+
+	// @TODO dar fclose do fd e eliminar da lista
+
+	// @TODO ver se na thread das apps 
 
 	// @TODO SE RECEBER ALGO DE UMA APP TENHO QUE PROPAGAR PARA TODOS OS CLIPBOARDS A QUE ESTOU CONECTADO
 	// @TODO SE RECEBER UMA ATUALIZAÇÃO DE UM CLIPBOARD PRECISO DE PROPAGAR PARA TODOS OS OUTROS 

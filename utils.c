@@ -328,35 +328,42 @@ void dealPasteRequests(int fd, char information[15]) {
 		return;
 	}
 
+	memset(information, '\0', 15);
+
 	// case that the region doesnt have content
 	if(regions[region] == NULL || regions[region][0] == '\0') {
 
-		// creates a char* full of \0 correspondent to the requested nº of bytes
-		char *message = (char*)mymalloc(sizeof(char)*len_message);
-		memset(message, '\0', len_message);
+		sprintf(information,"a %d %d", region, 0);
 
-		// sends that message
-		if(writeRoutine(fd, message, len_message) == -1) {
+		// asks the clipboard to send a message of a certain size from a certain region
+		if(writeRoutine(fd, information, 15) == -1) {
+			// error writing
 			printf("Error writing in dealPasteRequests\n");
-			free(message);
 			return;
 		}
 
-		free(message);
-
-	// case that the region has content
+		return;
 	} else {
-		/*if(len_message > regions_length[region]) //case the app requests more bytes than the actual region size
-			len_message = regions_length[region];*/
 
-		// TODO - Tratar da situação em que nos pedem mais bytes do que temos
+		sprintf(information,"a %d %d", region, (int) regions_length[region]);
 
-		// sends the region's content 
-		// mandar antes o tamanho??
-		if(writeRoutine(fd, regions[region], len_message) == -1) {
+		// asks the clipboard to send a message of a certain size from a certain region
+		if(writeRoutine(fd, information, 15) == -1) {
+			// error writing
 			printf("Error writing in dealPasteRequests\n");
 			return;
 		}
+
+	}
+
+	//case the app requests more bytes than the actual region size
+	if(len_message > regions_length[region]) 
+		len_message = regions_length[region];
+
+	// sends the region's content 
+	if(writeRoutine(fd, regions[region], len_message) == -1) {
+		printf("Error writing in dealPasteRequests\n");
+		return;
 	}
 
 	// TODO MUTEX THIS
@@ -444,7 +451,7 @@ int sendToParent(char *message, int region, int len_message) {
 		// error writing
 		return -1;
 	}
-	
+
 	// TODO MUTEXAR
 
 	// send complete
