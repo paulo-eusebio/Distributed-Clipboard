@@ -153,6 +153,9 @@ void * thread_clips(void * data) {
 	// @TODO SE RECEBER UMA ATUALIZAÇÃO DE UM CLIPBOARD PRECISO DE PROPAGAR PARA TODOS OS OUTROS 
 	// CLIPBOARDS ESTE O QUE ME ENVIOU
 
+	// TODO depois de sair do ciclo while (quando a conexão morrer) verificar se o fd é o do pai ou não
+	// caso seja o do pai meter fd_parent a -1, caso contrário remover da lista
+
 	return NULL;
 }
 

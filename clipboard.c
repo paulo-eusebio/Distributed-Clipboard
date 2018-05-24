@@ -95,8 +95,12 @@ void getClipboardBackUp(char const *argv[]) {
 
 	// TODO PENSAR SE METEMOS O THREAD_CREATE ANTES DO GETBACKUP
 
+	// TODO check if useless
 	// Save the fd and thread id of this connection
-	add(fd_client, thread_id, list_clips);
+	// add(fd_client, thread_id, list_clips);
+
+	// TODO MUTEXAR
+	fd_parent = fd_client;
 
 	// fills the regions with the content from a connected clipboard
 	getBackup(fd_client);
