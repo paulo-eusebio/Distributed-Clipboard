@@ -218,11 +218,13 @@ void * thread_stdin(void * data) {
 		if(strcmp(message,"exit")==0) 
 			pthread_exit(NULL);
 
-		if(strcmp(message,"print")==0) //se tiver \0 no meio, prolly dont funciona
-			for(int i = 0; i < 10; i++)
-				if(regions[i] != NULL)
+		if(strcmp(message,"print")==0) { //se tiver \0 no meio, prolly dont funciona
+			for(int i = 0; i < 10; i++) {
+				if(regions[i] != NULL) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
-			
+				}
+			}
+		}
 
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));

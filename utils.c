@@ -348,6 +348,9 @@ void dealPasteRequests(int fd, char information[15]) {
 	} else {
 		/*if(len_message > regions_length[region]) //case the app requests more bytes than the actual region size
 			len_message = regions_length[region];*/
+
+		// TODO - Tratar da situação em que nos pedem mais bytes do que temos
+
 		// sends the region's content 
 		// mandar antes o tamanho??
 		if(writeRoutine(fd, regions[region], len_message) == -1) {
@@ -360,3 +363,90 @@ void dealPasteRequests(int fd, char information[15]) {
 
 	return;
 }
+
+
+/*
+*
+* Iterates through the lists of fds of children and send the information about the region
+*
+*/
+int sendToChildren(char *message, int region, int len_message) {
+
+	// first message to inform the clipboard of the message that is about to be sent
+	char information[15] = "";
+
+	// starts message as all \0
+	memset(information, '\0', 15);
+
+	sprintf(information,"m %d %d", region, len_message);
+
+	// create an auxiliar pointer for iterating through list
+	Node *aux = list_clips->head;
+
+	while (aux != NULL) {
+
+		// sets up the clipboard for be ready to receive a message of a certain size 
+		// to insert inside a certain region
+		if(writeRoutine(aux->fd, information, (size_t) sizeof(information)) == -1) {
+			// error writing
+			return -1;
+		}
+
+		// sends the info for the child clipboard to save in that region
+		if(writeRoutine(aux->fd, message, len_message) == -1) {
+			// error writing
+			return -1;
+		}
+
+		// No need to clean information because the information sent will always be the same
+
+		aux = aux->next;
+	}
+
+
+	// TODO MUTEXAR
+
+	// send complete
+	return 0;
+}	
+
+
+/*
+*
+* Send the information about the region to the Parent clipboard
+*
+* 
+*/
+int sendToParent(char *message, int region, int len_message) {
+
+	if(fd_parent == -1) {
+		printf("Can't sent to parent because I have none.\n");
+		return -1;
+	}
+
+	// first message to inform the clipboard of the message that is about to be sent
+	char information[15] = "";
+
+	// starts message as all \0
+	memset(information, '\0', 15);
+
+	sprintf(information,"n %d %d", region, len_message);
+
+	// sets up the parent clipboard for be ready to receive a message of a certain size 
+	// to insert inside a certain region
+	if(writeRoutine(fd_parent, information, (size_t) sizeof(information)) == -1) {
+		// error writing
+		return -1;
+	}
+
+	// sends the info for the parent clipboard to save (in case of being the single) or send to its child
+	if(writeRoutine(fd_parent, message, len_message) == -1) {
+		// error writing
+		return -1;
+	}
+	
+	// TODO MUTEXAR
+
+	// send complete
+	return 0;
+}	

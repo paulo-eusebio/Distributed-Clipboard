@@ -29,6 +29,9 @@ void display(List * list) {
 /// adds to the end of the list
 void add(int fd, pthread_t thread_id, List * list){
   Node * current = NULL;
+
+  // METER MUTEXES
+
   if(list->head == NULL){
     list->head = createnode(fd, thread_id);
   }

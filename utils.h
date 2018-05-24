@@ -59,4 +59,8 @@ void dealCopyRequests(int fd, char information[15]);
 
 void dealPasteRequests(int fd, char information[15]);
 
+int sendToChildren(char *message, int region, int len_message);
+
+int sendToParent(char *message, int region, int len_message);
+
 #endif
