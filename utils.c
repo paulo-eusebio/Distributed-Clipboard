@@ -409,6 +409,9 @@ int sendToParent(char *message, int region, int len_message) {
 	memset(information, '\0', 15);
 
 	sprintf(information,"n %d %d", region, len_message);
+	
+	printf("info=%s\n", information);
+	
 
 	// sets up the parent clipboard for be ready to receive a message of a certain size 
 	// to insert inside a certain region
@@ -416,7 +419,7 @@ int sendToParent(char *message, int region, int len_message) {
 		// error writing
 		return -1;
 	}
-
+	printf("msg=%s\n", message);
 	// sends the info for the parent clipboard to save (in case of being the single) or send to its child
 	if(writeRoutine(fd_parent, message, len_message) == -1) {
 		// error writing

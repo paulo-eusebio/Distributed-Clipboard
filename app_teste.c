@@ -28,6 +28,11 @@ int main(int argc, char const *argv[]) {
 		fgets(message,MAX_INPUT,stdin);
 		sscanf(message, "%d", &action);
 		
+		if (action == 4) {
+			clipboard_close(clipboard_id);
+			break;
+		}
+		
 		printf("Region: ");
 		fgets(message,MAX_INPUT,stdin);
 		sscanf(message, "%d", &region);
@@ -45,8 +50,11 @@ int main(int argc, char const *argv[]) {
 			
 			clipboard_paste(clipboard_id, region, message, (size_t)many); 
 			printf("\nReceived  message '%s'\n", message);
+		} else if (action == 3) {
+			//TODO
+		} else {
+			printf("Wrong Command\n");
 		}
-
 		memset(message, '\0', strlen(message));
 	}
 
