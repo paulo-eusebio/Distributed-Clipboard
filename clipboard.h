@@ -23,7 +23,7 @@
 
 #define LISTENING_CLIPS_PORT 9000
 
-/** GLOBAL VARIABLES **/
+/*** GLOBAL VARIABLES ***/
 
 // matrix for our regions
 char **regions;

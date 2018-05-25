@@ -39,8 +39,18 @@ void * thread_app_listen(void * data){
 		pthread_t thread_apps_id;
 
 		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
-		// TODO MUTEX LOCK - MUTEXAPPSLIST
+
+		// MUTEX LOCK - MUTEXAPPSLIST
+		if( pthread_mutex_lock(&list_apps->list_mutex) != 0) {
+			perror("Error locking a mutex of apps in thread_app_listen");
+		}
+
 		add(fd_connect, thread_apps_id, list_apps);
+
+		// MUTEX UNLOCK - MUTEXAPPSLIST
+		if( pthread_mutex_unlock(&list_apps->list_mutex) != 0) {
+			perror("Error unlocking a mutex of apps in thread_app_listen");
+		}
 		
 		// thread to interact with the newly connected app
 		pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect); 
@@ -103,9 +113,16 @@ void * thread_clips_listen(void * data) {
 		pthread_t thread_clips_id;
 
 		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
-		// TODO MUTEX LOCK - MUTEXCLIPSLIST
+		// MUTEX LOCK - MUTEXCLIPSLIST
+		if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
+			perror("Error locking a mutex of clips in thread_clips");
+		}
 		add(newfd, thread_clips_id, list_clips);
+
 		// MUTEX UNLOCK
+		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+			perror("Error unlocking a mutex of clips in thread_clips");
+		}
 		
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
 		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
@@ -217,7 +234,6 @@ void * thread_clips(void * data) {
 
 		// receive a message from parent
 		} else if (information[0] == 'm') {
-			//TODO
 
 			if(sscanf(information, "m %d %d", &region, &len_message) != 2) {
 				printf("sscanf didn't assign the variables correctly\n");
@@ -287,9 +303,18 @@ void * thread_clips(void * data) {
 	if (fd == fd_parent) {
 		fd_parent = -1;
 	} else {
-		// TODO MUTEX LOCK - MUTEXCPLISPLIST
+
+		// MUTEX LOCK - MUTEXCPLISPLIST
+		if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
+			perror("Error locking a mutex of apps in thread_apps");
+		}
+
 		freeNode(fd, list_clips);
-		// MUTEX UNLOCK
+
+		// MUTEX UNLOCK 
+		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+			perror("Error unlocking a mutex of apps in thread_apps");
+		}
 	}
 
 	close(fd);
@@ -340,10 +365,20 @@ void * thread_apps(void * data) {
 		memset(information, '\0', sizeof(information));
 	}
 
+	// FREEING
+
 	// this fd is no longer connected, so remove it from the list
-	// TODO MUTEX LOCK - MUTEXAPPSLIST
+	// MUTEX LOCK - MUTEXAPPSLIST
+	if( pthread_mutex_lock(&list_apps->list_mutex) != 0) {
+		perror("Error locking a mutex of apps in thread_clips");
+	}
+
 	freeNode(fd, list_apps);
-	// MUTEX UNLOCK
+
+	// MUTEX UNLOCK - MUTEXAPPSLIST
+	if( pthread_mutex_unlock(&list_apps->list_mutex) != 0) {
+		perror("Error unlocking a mutex of apps in thread_clips");
+	}
 
 	// then close it
 	close(fd);
@@ -370,27 +405,54 @@ void * thread_stdin(void * data) {
 			for(int i = 0; i < 10; i++) {
 
 				// MUTEX LOCK - READLOCK
-				pthread_rwlock_rdlock(&regions_rwlock[i]);
+				if( pthread_rwlock_rdlock(&regions_rwlock[i]) != 0) {
+					perror("Error locking in thread_stdin");
+					continue;
+				}
 
 				if(regions[i] != NULL) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
 				}
 
 				// MUTEX UNLOCK
-				pthread_rwlock_unlock(&regions_rwlock[i]);
+				if( pthread_rwlock_unlock(&regions_rwlock[i]) != 0) {
+					perror("Error unlocking in thread_stdin");
+					continue;
+				}
 
 			}
 
 		}
 
 		if(strcmp(message,"print apps")==0) {
-			// TODO MUTEX LOCK - MUTEXAPPSLIST
+
+			// MUTEX LOCK - MUTEXAPPSLIST
+			if( pthread_mutex_lock(&list_apps->list_mutex) != 0) {
+				perror("Error locking a mutex of apps in thread_stdin");
+			}
+
 			display(list_apps);
+
+			// MUTEX UNLOCK - MUTEXAPPSLIST
+			if( pthread_mutex_unlock(&list_apps->list_mutex) != 0) {
+				perror("Error unlocking a mutex of apps in thread_stdin");
+			}
 		}
 
 		if(strcmp(message,"print clips")==0) {
-			// TODO MUTEX LOCK - MUTEXCLIPSLIST
+
+			// MUTEX LOCK - MUTEXCLIPSLIST
+
+			if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
+				perror("Error locking a mutex of clips in thread_stdin");
+			}
+
 			display(list_clips);
+
+			// MUTEX UNLOCK - MUTEXCLIPSLIST
+			if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+				perror("Error unlocking a mutex of clips in thread_stdin");
+			}
 		}
 
 		memset(bufstdin, '\0', strlen(bufstdin));	

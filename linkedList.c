@@ -11,17 +11,26 @@ Node *createnode(int fd, pthread_t thread_id){
 List * emptylist(){
   List * list = malloc(sizeof(List));
   list->head = NULL;
+
+  if(pthread_mutex_init(&list->list_mutex, NULL) != 0){
+    perror("Error creating the mutex of a list");
+    exit(-1);
+  }
+  
   return list;
 }
 
 void display(List * list) {
   Node * current = list->head;
+  
   if(list->head == NULL) 
     return;
+
   while(current->next != NULL){
     printf("%d, %d;", current->fd, (int) current->id);
     current = current->next;
   }
+
   printf("%d, %d", current->fd, (int) current->id);
 }
 

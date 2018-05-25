@@ -11,9 +11,12 @@ typedef struct node {
   struct node * next;
 } Node;
 
+
 typedef struct list {
-  Node * head; 
+  Node * head;
+  pthread_mutex_t list_mutex; 
 } List;
+
 
 Node *createnode(int fd, pthread_t thread_id);
 List * emptylist();

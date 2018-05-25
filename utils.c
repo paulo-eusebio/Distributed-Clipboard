@@ -214,8 +214,22 @@ void freeClipboard() {
 	// free memory of re	gions
 	for (int i = 0; i < 10; ++i) {
 	    free(regions[i]);
+
+	    if(pthread_rwlock_destroy(&regions_rwlock[i]) != 0){
+	    	perror("Error while destroying a mutex of a region");
+	    }
+	   
 	}
 	free(regions);
+
+	// destroying mutexes of lists
+	if( pthread_mutex_destroy(&list_clips->list_mutex) != 0) {
+		perror("Error while destroying mutex of clips list");
+	}
+
+	if( pthread_mutex_destroy(&list_apps->list_mutex) != 0) {
+		perror("Error while destroying mutex of clips list");
+	}
 
 	// Freeing lists
 	destroy(list_clips);
@@ -451,7 +465,7 @@ int sendToParent(char *message, int region, int len_message) {
 	printf("info=%s\n", information);
 	
 
-	// TODO MUTEX - MUTEX NORMAL PARA GARANTIR QUE NÃO HÁ VARIOS A ENVIAR AO PAI AO MESMO TEMPO
+	// TODO MUTEX - MUTEX do fd NORMAL PARA GARANTIR QUE NÃO HÁ VARIOS A ENVIAR AO PAI AO MESMO TEMPO
 
 	// sets up the parent clipboard for be ready to receive a message of a certain size 
 	// to insert inside a certain region
