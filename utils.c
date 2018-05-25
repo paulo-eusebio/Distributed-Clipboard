@@ -98,7 +98,9 @@ void getBackup(int fd) {
 		}
 
 		// This guaranteed to be the first time of allocking memory for regions, so we can use malloc
-		// TODO MUTEX - Write lock por causa da thread stdin
+		// MUTEX - Write lock por causa da thread stdin
+		pthread_rwlock_wrlock(&regions_rwlock[i]);
+
 		regions[i] = (char*) mymalloc(len_message*sizeof(char));
 
 		readRoutine(fd, regions[i], len_message);
@@ -107,6 +109,7 @@ void getBackup(int fd) {
 		regions_length[i] = len_message;
 
 		// MUTEX UNLOCK
+		pthread_rwlock_unlock(&regions_rwlock[i]);
 
 		// resets variables
 		memset(information, '\0', sizeof(information));
@@ -249,7 +252,8 @@ void dealCopyRequests(int fd, char information[15]) {
 	// I'm the top clipboard then save in the clipboard and send to my child
 	if (fd_parent == -1) {
 
-		// TODO MUTEX - WRITELOCK, porque outros podem querer ler a region em paralelo, mas só um pode escrever
+		// MUTEX - WRITELOCK, porque outros podem querer ler a region em paralelo, mas só um pode escrever
+		pthread_rwlock_wrlock(&regions_rwlock[region]);
 
 		//clears the previous stored message, by all its length
 		if(regions[region] != NULL) {
@@ -262,15 +266,14 @@ void dealCopyRequests(int fd, char information[15]) {
 
 		regions_length[region] = len_message;
 
-		// MUTEX UNLOCK
-
 		// propagates the message to its parent and doesn't save
-		// TODO MUTEX - READLOCK porque o clipboard pode estar a propagar uma mensagem ao mesmo tempo
-		// e não queremos impedir iss
 		if(sendToChildren(regions[region], region, len_message) == -1){
 			printf("Error writing in dealCopyRequests\n");
 			return;
 		}
+
+		// MUTEX Unlock
+		pthread_rwlock_unlock(&regions_rwlock[region]);
 
 	} else {
 
@@ -307,12 +310,12 @@ void dealPasteRequests(int fd, char information[15]) {
 
 	memset(information, '\0', 15);
 
-	// TODO MUTEX - READLOCK
+	// MUTEX - READLOCK
+	pthread_rwlock_rdlock(&regions_rwlock[region]);
+
 
 	// case that the region doesnt have content
 	if(regions[region] == NULL || regions[region][0] == '\0') {
-
-		// MUTEx UNLOCK
 
 		sprintf(information,"a %d %d", region, 0);
 
@@ -320,8 +323,15 @@ void dealPasteRequests(int fd, char information[15]) {
 		if(writeRoutine(fd, information, 15) == -1) {
 			// error writing
 			printf("Error writing in dealPasteRequests\n");
+
+			// MUTEx UNLOCK
+			pthread_rwlock_unlock(&regions_rwlock[region]);
+
 			return;
 		}
+
+		// MUTEx UNLOCK
+		pthread_rwlock_unlock(&regions_rwlock[region]);
 
 		return;
 
@@ -329,18 +339,18 @@ void dealPasteRequests(int fd, char information[15]) {
 
 		sprintf(information,"a %d %d", region, (int) regions_length[region]);
 
-		// MUTEX UNLOCK
-
 		// asks the clipboard to send a message of a certain size from a certain region
 		if(writeRoutine(fd, information, 15) == -1) {
 			// error writing
 			printf("Error writing in dealPasteRequests\n");
+
+			// MUTEx UNLOCK
+			pthread_rwlock_unlock(&regions_rwlock[region]);
+
 			return;
 		}
 
 	}
-
-	// TODO MUTEX - READLOCK
 
 	//case the app requests more bytes than the actual region size
 	if(len_message > regions_length[region]) 
@@ -351,10 +361,15 @@ void dealPasteRequests(int fd, char information[15]) {
 	// sends the region's content 
 	if(writeRoutine(fd, regions[region], len_message) == -1) {
 		printf("Error writing in dealPasteRequests\n");
+
+		// MUTEX UNLOCK
+		pthread_rwlock_unlock(&regions_rwlock[region]);
+
 		return;
 	}
 
 	// MUTEX UNLOCK
+	pthread_rwlock_unlock(&regions_rwlock[region]);
 
 	return;
 }
@@ -465,7 +480,9 @@ void sendBackup(int fd) {
 	
 	for(int i = 0; i < NUM_REG; i++) {
 
-		// TODO MUTEX - READLOCK
+		// MUTEX - READLOCK
+		pthread_rwlock_rdlock(&regions_rwlock[i]);
+
 		sprintf(information, "m %d %d", i, (int)regions_length[i]);
 
 		// não damos unlock aqui porque não queremos arriscar enviar uma região de tamanho diferente
@@ -477,8 +494,10 @@ void sendBackup(int fd) {
 		if(regions_length[i] != 0) {
 			writeRoutine(fd, regions[i], regions_length[i]);
 		}
-		//MUTEX UNLOCK deste fd
-		// MUTEX UNLOCK - READLOCK
+		// TODO MUTEX UNLOCK deste fd
+
+		// UNLOCK - READLOCK
+		pthread_rwlock_unlock(&regions_rwlock[i]);
 		
 		memset(information, '\0', sizeof(information));
 	}

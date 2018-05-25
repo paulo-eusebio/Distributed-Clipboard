@@ -159,7 +159,8 @@ void * thread_clips(void * data) {
 			if(fd_parent == -1) {
 				// reads into the region
 
-				// TODO MUTEX - WRITELOCK
+				// MUTEX - WRITELOCK
+				pthread_rwlock_wrlock(&regions_rwlock[region]);
 
 				if(regions[region] != NULL){
 					// resets
@@ -171,6 +172,10 @@ void * thread_clips(void * data) {
 
 				if(readRoutine(fd, regions[region], len_message) == 0) { 
 					printf("client disconnected, read is 0\n");
+
+					// MUTEX UNLOCK - WRITELOCK
+					pthread_rwlock_unlock(&regions_rwlock[region]);
+
 					break;
 				}
 
@@ -185,6 +190,7 @@ void * thread_clips(void * data) {
 				}
 
 				// MUTEX UNLOCK - WRITELOCK
+				pthread_rwlock_unlock(&regions_rwlock[region]);
 				
 			// if i'm not a single clipboard, have a parent
 			} else {
@@ -223,7 +229,8 @@ void * thread_clips(void * data) {
 				continue;
 			}
 
-			// TODO MUTEX - WRITELOCK
+			// MUTEX - WRITELOCK
+			pthread_rwlock_wrlock(&regions_rwlock[region]);
 
 			if(regions[region] != NULL){
 				// resets
@@ -235,6 +242,10 @@ void * thread_clips(void * data) {
 
 			if(readRoutine(fd, regions[region], len_message) == 0) { 
 				printf("client disconnected, read is 0\n");
+
+				// MUTEX UNLOCK - WRITELOCK
+				pthread_rwlock_unlock(&regions_rwlock[region]);
+
 				break;
 			}
 
@@ -248,6 +259,7 @@ void * thread_clips(void * data) {
 			}
 
 			// MUTEX UNLOCK - WRITELOCK
+			pthread_rwlock_unlock(&regions_rwlock[region]);
 
 		}
 
@@ -354,13 +366,21 @@ void * thread_stdin(void * data) {
 			pthread_exit(NULL);
 
 		if(strcmp(message,"print")==0) { //se tiver \0 no meio, prolly dont funciona
-			// TODO MUTEX LOCK - READLOCK
+
 			for(int i = 0; i < 10; i++) {
+
+				// MUTEX LOCK - READLOCK
+				pthread_rwlock_rdlock(&regions_rwlock[i]);
+
 				if(regions[i] != NULL) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
 				}
+
+				// MUTEX UNLOCK
+				pthread_rwlock_unlock(&regions_rwlock[i]);
+
 			}
-			// MUTEX UNLOCK
+
 		}
 
 		if(strcmp(message,"print apps")==0) {

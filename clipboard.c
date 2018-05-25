@@ -29,6 +29,9 @@ int main(int argc, char const *argv[]) {
 		// the size of the regions are initializad a null because it doesnt have a msg associated yet
 	    regions[i] = NULL;
 	    regions_length[i] = 0;
+	    if(pthread_rwlock_init(&regions_rwlock[i], NULL) != 0) {
+	    	printf("Inilization of rwlock wasn't succesful\n");
+	    }
 	}
 
 	// initializing lists of file descriptors and threads

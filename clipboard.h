@@ -30,6 +30,8 @@ char **regions;
 
 size_t regions_length[10];
 
+pthread_rwlock_t regions_rwlock[10];
+
 // stack for save the file descriptors of apps
 List* list_apps;
 
