@@ -305,6 +305,12 @@ void * thread_apps(void * data) {
 
 			// TODO
 
+		// Its a warning that the app is going to close the connection
+		} else if (information[0] == 's') {
+
+			printf("An application just disconnected.\n");
+			// gets out of the loop and closes the fd
+			break;
 		}
 
 		memset(information, '\0', sizeof(information));
@@ -322,8 +328,8 @@ void * thread_apps(void * data) {
 
 //threads that exclusively listens for stdin commands
 void * thread_stdin(void * data) {
-	char bufstdin[10];
-	char message[10];
+	char bufstdin[20];
+	char message[20];
 	
 	while(1) {
 		fgets(bufstdin, MAX_INPUT, stdin);
@@ -339,6 +345,14 @@ void * thread_stdin(void * data) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
 				}
 			}
+		}
+
+		if(strcmp(message,"print apps")==0) {
+			display(list_apps);
+		}
+
+		if(strcmp(message,"print clips")==0) {
+			display(list_clips);
 		}
 
 		memset(bufstdin, '\0', strlen(bufstdin));	
