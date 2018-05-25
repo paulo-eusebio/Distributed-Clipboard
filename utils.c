@@ -98,12 +98,15 @@ void getBackup(int fd) {
 		}
 
 		// This guaranteed to be the first time of allocking memory for regions, so we can use malloc
+		// TODO MUTEX - Write lock por causa da thread stdin
 		regions[i] = (char*) mymalloc(len_message*sizeof(char));
 
 		readRoutine(fd, regions[i], len_message);
 		// TODO ERROR TEST THIS
 
 		regions_length[i] = len_message;
+
+		// MUTEX UNLOCK
 
 		// resets variables
 		memset(information, '\0', sizeof(information));
@@ -246,6 +249,8 @@ void dealCopyRequests(int fd, char information[15]) {
 	// I'm the top clipboard then save in the clipboard and send to my child
 	if (fd_parent == -1) {
 
+		// TODO MUTEX - WRITELOCK, porque outros podem querer ler a region em paralelo, mas só um pode escrever
+
 		//clears the previous stored message, by all its length
 		if(regions[region] != NULL) {
 			memset(regions[region], '\0', regions_length[region]);
@@ -257,7 +262,11 @@ void dealCopyRequests(int fd, char information[15]) {
 
 		regions_length[region] = len_message;
 
+		// MUTEX UNLOCK
+
 		// propagates the message to its parent and doesn't save
+		// TODO MUTEX - READLOCK porque o clipboard pode estar a propagar uma mensagem ao mesmo tempo
+		// e não queremos impedir iss
 		if(sendToChildren(regions[region], region, len_message) == -1){
 			printf("Error writing in dealCopyRequests\n");
 			return;
@@ -274,9 +283,6 @@ void dealCopyRequests(int fd, char information[15]) {
 		}
 
 	}
-
-
-	// TODO MUTEX THIS
 
 	return;
 }
@@ -301,8 +307,12 @@ void dealPasteRequests(int fd, char information[15]) {
 
 	memset(information, '\0', 15);
 
+	// TODO MUTEX - READLOCK
+
 	// case that the region doesnt have content
 	if(regions[region] == NULL || regions[region][0] == '\0') {
+
+		// MUTEx UNLOCK
 
 		sprintf(information,"a %d %d", region, 0);
 
@@ -314,9 +324,12 @@ void dealPasteRequests(int fd, char information[15]) {
 		}
 
 		return;
+
 	} else {
 
 		sprintf(information,"a %d %d", region, (int) regions_length[region]);
+
+		// MUTEX UNLOCK
 
 		// asks the clipboard to send a message of a certain size from a certain region
 		if(writeRoutine(fd, information, 15) == -1) {
@@ -327,9 +340,13 @@ void dealPasteRequests(int fd, char information[15]) {
 
 	}
 
+	// TODO MUTEX - READLOCK
+
 	//case the app requests more bytes than the actual region size
 	if(len_message > regions_length[region]) 
 		len_message = regions_length[region];
+
+	// no need to do a lock in this fd because an app can't send anything while waiting to receive the paste
 
 	// sends the region's content 
 	if(writeRoutine(fd, regions[region], len_message) == -1) {
@@ -337,7 +354,7 @@ void dealPasteRequests(int fd, char information[15]) {
 		return;
 	}
 
-	// TODO MUTEX THIS
+	// MUTEX UNLOCK
 
 	return;
 }
@@ -363,6 +380,11 @@ int sendToChildren(char *message, int region, int len_message) {
 
 	while (aux != NULL) {
 
+		// it only locks the mutex of the fd when it's top of the tree (no parent)
+		if(fd_parent == -1) {
+			// TODO MUTEX - LOCK do fd
+		}
+
 		// sets up the clipboard for be ready to receive a message of a certain size 
 		// to insert inside a certain region
 		if(writeRoutine(aux->fd, information, (size_t) sizeof(information)) == -1) {
@@ -376,13 +398,14 @@ int sendToChildren(char *message, int region, int len_message) {
 			return -1;
 		}
 
+		if(fd_parent == -1) {
+			// TODO MUTEX UNLOCK - LOCK do fd
+		}
+
 		// No need to clean information because the information sent will always be the same
 
 		aux = aux->next;
 	}
-
-
-	// TODO MUTEXAR
 
 	// send complete
 	return 0;
@@ -413,6 +436,8 @@ int sendToParent(char *message, int region, int len_message) {
 	printf("info=%s\n", information);
 	
 
+	// TODO MUTEX - MUTEX NORMAL PARA GARANTIR QUE NÃO HÁ VARIOS A ENVIAR AO PAI AO MESMO TEMPO
+
 	// sets up the parent clipboard for be ready to receive a message of a certain size 
 	// to insert inside a certain region
 	if(writeRoutine(fd_parent, information, (size_t) sizeof(information)) == -1) {
@@ -426,7 +451,7 @@ int sendToParent(char *message, int region, int len_message) {
 		return -1;
 	}
 
-	// TODO MUTEXAR
+	// TODO MUTEX UNLOCK
 
 	// send complete
 	return 0;
@@ -439,12 +464,21 @@ void sendBackup(int fd) {
 	memset(information, '\0', sizeof(information));
 	
 	for(int i = 0; i < NUM_REG; i++) {
+
+		// TODO MUTEX - READLOCK
 		sprintf(information, "m %d %d", i, (int)regions_length[i]);
+
+		// não damos unlock aqui porque não queremos arriscar enviar uma região de tamanho diferente
+		// ao combinado na mensagem de aviso
+
+		// TODO MUTEX - LOCK deste fd
 		writeRoutine(fd, information, sizeof(information)); //TODO check errors!!
 
 		if(regions_length[i] != 0) {
 			writeRoutine(fd, regions[i], regions_length[i]);
 		}
+		//MUTEX UNLOCK deste fd
+		// MUTEX UNLOCK - READLOCK
 		
 		memset(information, '\0', sizeof(information));
 	}
