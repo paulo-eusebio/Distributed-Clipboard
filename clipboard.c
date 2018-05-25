@@ -95,7 +95,6 @@ void getClipboardBackUp(char const *argv[]) {
 
 	// TODO PENSAR SE METEMOS O THREAD_CREATE ANTES DO GETBACKUP
 
-	// TODO MUTEXAR
 	fd_parent = fd_client;
 
 	// fills the regions with the content from a connected clipboard

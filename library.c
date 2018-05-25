@@ -157,6 +157,14 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 /// This function closes the connection between the application and the local clipboard
 void clipboard_close(int clipboard_id) {
 
+	char message[15] = "s";
+
+	// warns the clipboard that the app is going to disconnect
+	if(writeRoutine(clipboard_id, message, sizeof(message)) == -1) {
+		// error writing
+		return;
+	}
+
 	if(close(clipboard_id) == -1) {
 		printf("Error closing connection: %s\n", strerror(errno));
 	}

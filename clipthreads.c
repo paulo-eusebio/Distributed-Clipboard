@@ -21,7 +21,7 @@ void * thread_app_listen(void * data){
 		exit(-1);
 	}
 
-	if(listen(fd_listen, 2) == -1) {
+	if(listen(fd_listen, 3) == -1) {
 		perror("Error while listening: ");
 		exit(-1);
 	}
@@ -30,7 +30,7 @@ void * thread_app_listen(void * data){
 
 		if( (fd_connect = accept(fd_listen, (struct sockaddr*) & client_addr, &size_addr)) == -1) {
 			perror("Error accepting");
-			exit(-1);
+			break;
 		}
 
 		printf("Accepted a new app connection\n");
@@ -39,14 +39,14 @@ void * thread_app_listen(void * data){
 		pthread_t thread_apps_id;
 
 		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
+		// TODO MUTEX LOCK - MUTEXAPPSLIST
 		add(fd_connect, thread_apps_id, list_apps);
 		
 		// thread to interact with the newly connected app
 		pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect); 
 	}
 	
-	close(fd_connect);
-
+	close(fd_listen);
 
 	return NULL;
 }
@@ -84,7 +84,7 @@ void * thread_clips_listen(void * data) {
 		exit(-1);
 	}
 
-	if (listen(fd,5)==-1){
+	if (listen(fd,3)==-1){
 		exit(1);
 	}
 
@@ -103,7 +103,9 @@ void * thread_clips_listen(void * data) {
 		pthread_t thread_clips_id;
 
 		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
+		// TODO MUTEX LOCK - MUTEXCLIPSLIST
 		add(newfd, thread_clips_id, list_clips);
+		// MUTEX UNLOCK
 		
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
 		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
@@ -129,13 +131,15 @@ void * thread_clips(void * data) {
 	memset(information, '\0', sizeof(information));
 
 	while(1) {
-
+		//para a este fd nao ha dois writes ou reads em threads diferentes em simultaneo
+		//pode haver um read aqui e um write na thread ligada ao pai mas como é duplex n ha stress
 		if(readRoutine(fd, information, sizeof(information)) == 0) { 
 			printf("client disconnected, read is 0\n");
 			break;
 		}
 		// Its a request of the type copy
 		if (information[0] == 'k') {
+			// sends content from all its regions
 			sendBackup(fd);
 
 		// received a message from children
@@ -155,6 +159,8 @@ void * thread_clips(void * data) {
 			if(fd_parent == -1) {
 				// reads into the region
 
+				// TODO MUTEX - WRITELOCK
+
 				if(regions[region] != NULL){
 					// resets
 					memset(regions[region], '\0', regions_length[region]);	
@@ -171,11 +177,14 @@ void * thread_clips(void * data) {
 				regions_length[region] = len_message;
 
 				// propagates the message to its children
+				// OUTDATED MUTEX - READLOCK porque a app pode querer fazer um paste ao mesmo tempo
 				if(sendToChildren(regions[region], region, len_message) == -1){
 					printf("Error writing in thread_clips, sendToChildren\n");
 
 					// TODO ver se é preciso dar continue e limpar as variaveis
 				}
+
+				// MUTEX UNLOCK - WRITELOCK
 				
 			// if i'm not a single clipboard, have a parent
 			} else {
@@ -200,8 +209,6 @@ void * thread_clips(void * data) {
 				free(aux_buffer);
 			}
 
-
-
 		// receive a message from parent
 		} else if (information[0] == 'm') {
 			//TODO
@@ -215,6 +222,8 @@ void * thread_clips(void * data) {
 
 				continue;
 			}
+
+			// TODO MUTEX - WRITELOCK
 
 			if(regions[region] != NULL){
 				// resets
@@ -238,6 +247,7 @@ void * thread_clips(void * data) {
 				// TODO ver se é preciso dar continue e limpar as variaveis
 			}
 
+			// MUTEX UNLOCK - WRITELOCK
 
 		}
 
@@ -265,7 +275,9 @@ void * thread_clips(void * data) {
 	if (fd == fd_parent) {
 		fd_parent = -1;
 	} else {
+		// TODO MUTEX LOCK - MUTEXCPLISPLIST
 		freeNode(fd, list_clips);
+		// MUTEX UNLOCK
 	}
 
 	close(fd);
@@ -305,13 +317,21 @@ void * thread_apps(void * data) {
 
 			// TODO
 
+		// Its a warning that the app is going to close the connection
+		} else if (information[0] == 's') {
+
+			printf("An application just disconnected.\n");
+			// gets out of the loop and closes the fd
+			break;
 		}
 
 		memset(information, '\0', sizeof(information));
 	}
 
 	// this fd is no longer connected, so remove it from the list
+	// TODO MUTEX LOCK - MUTEXAPPSLIST
 	freeNode(fd, list_apps);
+	// MUTEX UNLOCK
 
 	// then close it
 	close(fd);
@@ -322,8 +342,8 @@ void * thread_apps(void * data) {
 
 //threads that exclusively listens for stdin commands
 void * thread_stdin(void * data) {
-	char bufstdin[10];
-	char message[10];
+	char bufstdin[20];
+	char message[20];
 	
 	while(1) {
 		fgets(bufstdin, MAX_INPUT, stdin);
@@ -334,11 +354,23 @@ void * thread_stdin(void * data) {
 			pthread_exit(NULL);
 
 		if(strcmp(message,"print")==0) { //se tiver \0 no meio, prolly dont funciona
+			// TODO MUTEX LOCK - READLOCK
 			for(int i = 0; i < 10; i++) {
 				if(regions[i] != NULL) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
 				}
 			}
+			// MUTEX UNLOCK
+		}
+
+		if(strcmp(message,"print apps")==0) {
+			// TODO MUTEX LOCK - MUTEXAPPSLIST
+			display(list_apps);
+		}
+
+		if(strcmp(message,"print clips")==0) {
+			// TODO MUTEX LOCK - MUTEXCLIPSLIST
+			display(list_clips);
 		}
 
 		memset(bufstdin, '\0', strlen(bufstdin));	
