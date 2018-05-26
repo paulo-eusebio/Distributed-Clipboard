@@ -411,7 +411,7 @@ int sendToChildren(char *message, int region, int len_message) {
 
 		// it only locks the mutex of the fd when it's top of the tree (no parent)
 		if(fd_parent == -1) {
-			// TODO MUTEX - LOCK do fd
+			// TODO MUTEX - LOCK do fd <--- Desnecessário
 		}
 
 		// sets up the clipboard for be ready to receive a message of a certain size 
@@ -428,7 +428,7 @@ int sendToChildren(char *message, int region, int len_message) {
 		}
 
 		if(fd_parent == -1) {
-			// TODO MUTEX UNLOCK - LOCK do fd
+			// TODO MUTEX UNLOCK - LOCK do fd <---- Desnecessário
 		}
 
 		// No need to clean information because the information sent will always be the same
