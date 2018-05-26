@@ -64,18 +64,40 @@ int main(int argc, char const *argv[]) {
 		sscanf(message, "%d", &region);
 		
 		if(action == 1) { //copy
-			printf("Type a message: ");
+			printf("File going to be sent");
 			/*fgets(message, MAX_INPUT, stdin); //nao usar scanf para sacar strings!! 
 			strtok(message, "\n"); //removes \n, just to be prettier*/
 			
-			clipboard_copy(clipboard_id, region, sendbuf, result);
+			if(clipboard_copy(clipboard_id, region, sendbuf, result) == 0){
+				fclose(file);
+				close(clipboard_id);
+			}
+
 		} else if (action == 2) { //paste
 			printf("How many bytes: ");
 			fgets(message,MAX_INPUT,stdin);
 			sscanf(message, "%d", &many);
 			
-			clipboard_paste(clipboard_id, region, message, (size_t)many); 
-			printf("\nReceived  message '%s'\n", message);
+			char *recv_buf = (char*)mymalloc(sizeof(char)*many);
+
+			if(clipboard_paste(clipboard_id, region, recv_buf, (size_t)many) == 0) {
+				free(recv_buf);
+				fclose(file);
+				close(clipboard_id);
+			}
+
+			if(strcmp(argv[1],"image") == 0) {
+				printf("Image saved in file'\n");
+
+				FILE *image;
+				image = fopen("output.jpg", "w");
+				fwrite(recv_buf, 1, many, image);
+				fclose(image);
+			} else {
+				printf("\nReceived  message '%s'\n", recv_buf);
+			}
+			
+			free(recv_buf);
 		} else if (action == 3) {
 			//TODO
 		} else {
@@ -83,6 +105,8 @@ int main(int argc, char const *argv[]) {
 		}
 		memset(message, '\0', strlen(message));
 	}
+
+	fclose(file);
 
 	exit(0);
 }
