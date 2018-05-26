@@ -23,7 +23,7 @@ int main(int argc, char const *argv[]) {
 	}
 
 	while(1) {
-		printf("\nPress:\n\t1 to Copy\n\t2 to Paste\n\t3 to Wait\n\t4 to close\n");
+		printf("\nPress:\n\t1 to Copy\n\t2 to Paste\n\t3 to Wait\n\t4 to Close\n");
 		
 		fgets(message,MAX_INPUT,stdin);
 		sscanf(message, "%d", &action);

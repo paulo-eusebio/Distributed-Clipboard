@@ -41,6 +41,7 @@ List* list_clips;
 // file descriptor of the parent clipboard
 // if -1 it doesnt have a parent, else it does
 int fd_parent;
+pthread_mutex_t parent_socket_lock;// = PTHREAD_MUTEX_INITIALIZER;
 
 /************************/
 

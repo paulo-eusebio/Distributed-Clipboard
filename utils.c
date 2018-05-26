@@ -136,7 +136,7 @@ int writeRoutine(int fd, char *buffer, size_t length) {
 			return -1;*/
 		if(nwritten <= 0){
 			printf("ocorreu um erro no write\n");
-			exit(-1);
+			return -1;
 		}
 		nleft -= nwritten;
 		ptr += nwritten;
@@ -159,7 +159,7 @@ int readRoutine(int fd, char *storageBuf, size_t length){
 		nleft -= nread;
 		if(nread==-1){
 			printf("Ocorreu um erro no read\n");
-			exit(-1);
+			return -1; 
 		}else if(nread==0){
 			break;
 		}
@@ -229,6 +229,13 @@ void freeClipboard() {
 
 	if( pthread_mutex_destroy(&list_apps->list_mutex) != 0) {
 		perror("Error while destroying mutex of clips list");
+	}
+	
+	if(fd_parent != -1) {
+		close(fd_parent);
+		if( pthread_mutex_destroy(&parent_socket_lock) != 0) {
+			perror("Error while destroying fd parent");
+		}
 	}
 
 	// Freeing lists
@@ -405,6 +412,11 @@ int sendToChildren(char *message, int region, int len_message) {
 	sprintf(information,"m %d %d", region, len_message);
 
 	// create an auxiliar pointer for iterating through list
+	// MUTEX while iterating linkedlist of clipbards
+	if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
+		perror("Error locking a mutex of clips in sendToChildren");
+	}
+		
 	Node *aux = list_clips->head;
 
 	while (aux != NULL) {
@@ -431,9 +443,15 @@ int sendToChildren(char *message, int region, int len_message) {
 			// TODO MUTEX UNLOCK - LOCK do fd <---- Desnecessário
 		}
 
+
 		// No need to clean information because the information sent will always be the same
 
 		aux = aux->next;
+	}
+	
+	// MUTEX UNLOCK
+	if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+		perror("Error unlocking a mutex of clips in sendToChildren");
 	}
 
 	// send complete
@@ -465,7 +483,11 @@ int sendToParent(char *message, int region, int len_message) {
 	printf("info=%s\n", information);
 	
 
-	// TODO MUTEX - MUTEX do fd NORMAL PARA GARANTIR QUE NÃO HÁ VARIOS A ENVIAR AO PAI AO MESMO TEMPO
+	//MUTEX LOCK socket para fd parent
+	
+	if( pthread_mutex_lock(&parent_socket_lock) != 0) {
+		perror("Error locking a mutex in send parent");
+	}
 
 	// sets up the parent clipboard for be ready to receive a message of a certain size 
 	// to insert inside a certain region
@@ -473,14 +495,17 @@ int sendToParent(char *message, int region, int len_message) {
 		// error writing
 		return -1;
 	}
-	printf("msg=%s\n", message);
+	
 	// sends the info for the parent clipboard to save (in case of being the single) or send to its child
 	if(writeRoutine(fd_parent, message, len_message) == -1) {
 		// error writing
 		return -1;
 	}
 
-	// TODO MUTEX UNLOCK
+	// MUTEX UNLOCK
+	if( pthread_mutex_unlock(&parent_socket_lock) != 0) {
+		perror("Error unlocking a mutex in send parent");
+	}
 
 	// send complete
 	return 0;

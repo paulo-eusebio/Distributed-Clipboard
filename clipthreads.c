@@ -302,6 +302,9 @@ void * thread_clips(void * data) {
 	// caso seja o do pai meter fd_parent a -1, caso contrário remover da lista
 	if (fd == fd_parent) {
 		fd_parent = -1;
+		if( pthread_mutex_destroy(&parent_socket_lock) != 0) {
+			perror("Error while destroying fd parent");
+		}
 	} else {
 
 		// MUTEX LOCK - MUTEXCPLISPLIST

@@ -99,6 +99,9 @@ void getClipboardBackUp(char const *argv[]) {
 	// TODO PENSAR SE METEMOS O THREAD_CREATE ANTES DO GETBACKUP
 
 	fd_parent = fd_client;
+	if (pthread_mutex_init(&parent_socket_lock, NULL) != 0) {
+		printf("Inilization of rwlock wasn't succesful\n");
+	}
 
 	// fills the regions with the content from a connected clipboard
 	getBackup(fd_client);
