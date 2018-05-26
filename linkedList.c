@@ -1,9 +1,12 @@
 #include "linkedList.h"
 
-Node *createnode(int fd, pthread_t thread_id){
+Node *createnode(int fd, pthread_t thread_id, pthread_mutex_t *mutex){
   Node * newNode = malloc(sizeof(Node));
   newNode->fd = fd;
   newNode->id = thread_id;
+
+  newNode->mutex = mutex;
+
   newNode->next = NULL;
   return newNode;
 }
@@ -36,11 +39,11 @@ void display(List * list) {
 
 
 /// adds to the end of the list
-void add(int fd, pthread_t thread_id, List * list){
+void add(int fd, pthread_t thread_id, pthread_mutex_t *mutex, List * list){
   Node * current = NULL;
 
   if(list->head == NULL){
-    list->head = createnode(fd, thread_id);
+    list->head = createnode(fd, thread_id, mutex);
   }
   else {
     current = list->head; 
@@ -48,7 +51,7 @@ void add(int fd, pthread_t thread_id, List * list){
       current = current->next;
     }
     
-    current->next = createnode(fd, thread_id);
+    current->next = createnode(fd, thread_id, mutex);
   }
 }
 
@@ -67,7 +70,36 @@ void freeNode(int fd, List * list){
     previous = current;             
     current = current->next;        
   }                                 
-}                                   
+}                        
+
+
+/// destroy a mutex of a certain node
+void destroyNodeMutex(int fd, List * list){
+  Node * current = list->head;                      
+  while(current != NULL){           
+    if(current->fd == fd){      
+      if( pthread_mutex_destroy(current->mutex) != 0) {
+        perror("Error while destroying fd parent");
+      }
+      return;
+    }                                          
+    current = current->next;        
+  }                                 
+}      
+
+/// returns the mutex of a certain node
+pthread_mutex_t *getNodeMutex(int fd, List * list) {
+  Node * current = list->head;                       
+  while(current != NULL){           
+    if(current->fd == fd){      
+      return current->mutex;
+    }                                          
+    current = current->next;        
+  }                    
+
+  return NULL;             
+} 
+
 
 void reverse(List * list){
   Node * reversed = NULL;
@@ -93,7 +125,15 @@ void destroy(List * list){
   Node * next = current;
   while(current != NULL){
     next = current->next;
-    //close(current->fd);
+
+    if( close(current->fd) ) {
+        perror("Closing file descriptor");
+    }
+
+    if( pthread_cancel(current->id) != 0) {
+      perror("Error while closing threads");
+    }
+
     free(current);
     current = next;
   }

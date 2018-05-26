@@ -45,7 +45,7 @@ void * thread_app_listen(void * data){
 			perror("Error locking a mutex of apps in thread_app_listen");
 		}
 
-		add(fd_connect, thread_apps_id, list_apps);
+		add(fd_connect, thread_apps_id, NULL, list_apps);
 
 		// MUTEX UNLOCK - MUTEXAPPSLIST
 		if( pthread_mutex_unlock(&list_apps->list_mutex) != 0) {
@@ -57,6 +57,8 @@ void * thread_app_listen(void * data){
 	}
 	
 	close(fd_listen);
+
+	pthread_exit(NULL);
 
 	return NULL;
 }
@@ -117,7 +119,15 @@ void * thread_clips_listen(void * data) {
 		if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
 			perror("Error locking a mutex of clips in thread_clips");
 		}
-		add(newfd, thread_clips_id, list_clips);
+
+		// initializes mutex for clipboard fd
+		pthread_mutex_t mutex;
+
+		if( pthread_mutex_init(&mutex, NULL) != 0) {
+    		perror("Error initiating mutex");
+  		}
+
+		add(newfd, thread_clips_id, &mutex, list_clips);
 
 		// MUTEX UNLOCK
 		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
@@ -129,6 +139,8 @@ void * thread_clips_listen(void * data) {
 	}
 
 	close(fd);
+
+	pthread_exit(NULL);
 
 	return NULL;
 }
@@ -208,6 +220,10 @@ void * thread_clips(void * data) {
 
 				// MUTEX UNLOCK - WRITELOCK
 				pthread_rwlock_unlock(&regions_rwlock[region]);
+				//wakes all threads waiting for this region to update
+				if(pthread_cond_broadcast(&wait_regions[region]) != 0) {
+					perror("error broadcasting conditional var\n");
+				}
 				
 			// if i'm not a single clipboard, have a parent
 			} else {
@@ -219,6 +235,7 @@ void * thread_clips(void * data) {
 
 				if(readRoutine(fd, aux_buffer, len_message) == 0) { 
 					printf("client disconnected, read is 0\n");
+					free(aux_buffer);
 					break;
 				}		
 
@@ -276,6 +293,10 @@ void * thread_clips(void * data) {
 
 			// MUTEX UNLOCK - WRITELOCK
 			pthread_rwlock_unlock(&regions_rwlock[region]);
+			if(pthread_cond_broadcast(&wait_regions[region]) != 0) {
+				perror("error broadcasting conditional var\n");
+			}
+			
 
 		}
 
@@ -309,18 +330,23 @@ void * thread_clips(void * data) {
 
 		// MUTEX LOCK - MUTEXCPLISPLIST
 		if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
-			perror("Error locking a mutex of apps in thread_apps");
+			perror("Error locking a mutex of clips in thread_apps");
 		}
+
+		// for destroying the mutex of a node of type clips
+		destroyNodeMutex(fd, list_clips);
 
 		freeNode(fd, list_clips);
 
 		// MUTEX UNLOCK 
 		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
-			perror("Error unlocking a mutex of apps in thread_apps");
+			perror("Error unlocking a mutex of clips in thread_apps");
 		}
 	}
 
 	close(fd);
+
+	pthread_exit(NULL);
 
 	return NULL;
 }
@@ -355,7 +381,7 @@ void * thread_apps(void * data) {
 		// Its a request of the type wait
 		} else if (information[0] == 'w') {
 
-			// TODO
+			dealWaitRequests(fd, information);
 
 		// Its a warning that the app is going to close the connection
 		} else if (information[0] == 's') {
@@ -385,6 +411,8 @@ void * thread_apps(void * data) {
 
 	// then close it
 	close(fd);
+
+	pthread_exit(NULL);
 	
 	return NULL;
 }
@@ -461,7 +489,8 @@ void * thread_stdin(void * data) {
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));
 	}
-	
+
+	pthread_exit(NULL);
 }
 
 //wait mandar msg ao clipboard e ficar à espera bloqueado no read???
