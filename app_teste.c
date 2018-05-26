@@ -48,15 +48,19 @@ int main(int argc, char const *argv[]) {
 			fgets(message,MAX_INPUT,stdin);
 			sscanf(message, "%d", &many);
 			
-			clipboard_paste(clipboard_id, region, message, (size_t)many); 
-			printf("\nReceived  message '%s'\n", message);
+			char *recv_buf = (char*)mymalloc(sizeof(char)*many);
+			
+			clipboard_paste(clipboard_id, region, recv_buf, (size_t)many); 
+			printf("\nReceived  message '%s'\n", recv_buf);
 		} else if (action == 3) {
 			printf("How many bytes: ");
 			fgets(message,MAX_INPUT,stdin);
 			sscanf(message, "%d", &many);
 			
-			clipboard_wait(clipboard_id, region, message, (size_t)many); 
-			printf("\nReceived  message '%s'\n", message);
+			char *recv_buf = (char*)mymalloc(sizeof(char)*many);
+			
+			clipboard_wait(clipboard_id, region, recv_buf, (size_t)many); 
+			printf("\nReceived  message '%s'\n", recv_buf);
 		} else {
 			printf("Wrong Command\n");
 		}
