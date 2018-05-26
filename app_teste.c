@@ -51,7 +51,12 @@ int main(int argc, char const *argv[]) {
 			clipboard_paste(clipboard_id, region, message, (size_t)many); 
 			printf("\nReceived  message '%s'\n", message);
 		} else if (action == 3) {
-			//TODO
+			printf("How many bytes: ");
+			fgets(message,MAX_INPUT,stdin);
+			sscanf(message, "%d", &many);
+			
+			clipboard_wait(clipboard_id, region, message, (size_t)many); 
+			printf("\nReceived  message '%s'\n", message);
 		} else {
 			printf("Wrong Command\n");
 		}

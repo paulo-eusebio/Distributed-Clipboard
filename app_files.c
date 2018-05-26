@@ -93,7 +93,26 @@ int main(int argc, char const *argv[]) {
 			
 			free(recv_buf);
 		} else if (action == 3) {
-			//TODO
+			printf("How many bytes: ");
+			fgets(message,MAX_INPUT,stdin);
+			sscanf(message, "%d", &many);
+			
+			char *recv_buf = (char*)mymalloc(sizeof(char)*many);
+
+			if(clipboard_wait(clipboard_id, region, recv_buf, (size_t)many) == 0) {
+				free(recv_buf);
+				fclose(file);
+				close(clipboard_id);
+			}
+
+			printf("Image saved in file'\n");
+
+			FILE *outputfile;
+			char outputname[11] = "output.";
+			strcat(outputname, argv[2]);
+			outputfile = fopen(outputname, "w");
+			fwrite(recv_buf, 1, many, outputfile);
+			fclose(outputfile);
 		} else {
 			printf("Wrong Command\n");
 		}

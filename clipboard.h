@@ -45,7 +45,7 @@ pthread_mutex_t parent_socket_lock;// = PTHREAD_MUTEX_INITIALIZER;
 
 //one conditional variable for each region
 pthread_cond_t wait_regions[10];
-
+pthread_mutex_t region_waits[10];
 /************************/
 
 void getClipboardBackUp(char const *argv[]);

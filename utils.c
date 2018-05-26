@@ -406,15 +406,22 @@ void dealWaitRequests(int fd, char information[15]) {
 		
 		return;
 	}
+
+	if(pthread_mutex_lock(&region_waits[region]) != 0) {
+		perror("error rdlock in dealWaitRequests\n");
+	}
+
+	if(pthread_cond_wait(&wait_regions[region], &region_waits[region]) != 0) {
+		perror("error wait cond var in dealWaitRequests\n");
+	}
+	
+	if(pthread_mutex_unlock(&region_waits[region]) != 0) {
+		perror("error rdlock in dealWaitRequests\n");
+	}
 	
 	if(pthread_rwlock_rdlock(&regions_rwlock[region]) != 0) {
 		perror("error rdlock in dealWaitRequests\n");
 	}
-	
-	if(pthread_cond_wait(&wait_regions[region], &regions_rwlock[region]) != 0) {
-		perror("error wait cond var in dealWaitRequests\n");
-	}
-	
 	//region's content has changed
 	
 	if(regions[region] == NULL || regions[region][0] == '\0') {

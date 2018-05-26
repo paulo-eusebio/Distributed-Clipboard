@@ -34,6 +34,9 @@ int main(int argc, char const *argv[]) {
 	    }
 	    if(pthread_cond_init(&wait_regions[i], NULL) != 0) {
 	    	printf("Inilization of conditional vars wasn't succesful\n");
+	    } 
+	    if(pthread_mutex_init(&region_waits[i], NULL) != 0) {
+	    	printf("Inilization of conditional vars wasn't succesful\n");
 	    }
 	}
 
