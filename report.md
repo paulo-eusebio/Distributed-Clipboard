@@ -74,12 +74,11 @@ Onda usamos readlock dar exemplo de porque é que da jeito
 	- SendToChilder	
 		- SendToChildren, lock do fd, pode acontecer (na verdade só acontece no topo), recebo um 'n' dum filho e um 'c' da app e vou
 		fazer sendtochildren ao mesmo tempo
+		- ACHO QUE ISTO NAO VAI ACONTECER, PORQUE ESTAMOS A DAR LOCK DO ACESSO A LISTA DE CHILDREN, POR ISSO NUNCA 2 THREADS DIFERENTES
+		VAO CONSEGUIR ESCREVER PO MESMO SOCKET, a que chega primeiro vai ter de dar a volta toda, largar o mutex e so deopis é que a 
+		segunda consegue escrever para o filho
 	
 	
 
-Mutexs a usar:
-	- 1 para a lista de apps
-	- 1 para a lista de clips vizinhos
-	- 1 mutex dentro do sendToParent
-	- 1 mutex dentro do sendToChildren
+
 
