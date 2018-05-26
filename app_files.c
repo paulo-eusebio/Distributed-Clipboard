@@ -26,11 +26,7 @@ int main(int argc, char const *argv[]) {
 	printf("Getting File Size\n");
 	FILE *file = NULL;
 
-	if(strcmp(argv[1],"image") == 0) {
-		file = fopen(argv[2], "rb");
-	} else if(strcmp(argv[1],"file") == 0) {
-		file = fopen(argv[2], "r");
-	}
+	file = fopen(argv[1], "r");
 	
 	int filesize;
 	fseek(file, 0, SEEK_END);
@@ -86,16 +82,14 @@ int main(int argc, char const *argv[]) {
 				close(clipboard_id);
 			}
 
-			if(strcmp(argv[1],"image") == 0) {
-				printf("Image saved in file'\n");
+			printf("Image saved in file'\n");
 
-				FILE *image;
-				image = fopen("output.jpg", "w");
-				fwrite(recv_buf, 1, many, image);
-				fclose(image);
-			} else {
-				printf("\nReceived  message '%s'\n", recv_buf);
-			}
+			FILE *outputfile;
+			char outputname[11] = "output.";
+			strcat(outputname, argv[2]);
+			outputfile = fopen(outputname, "w");
+			fwrite(recv_buf, 1, many, outputfile);
+			fclose(outputfile);
 			
 			free(recv_buf);
 		} else if (action == 3) {
