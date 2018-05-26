@@ -174,7 +174,70 @@ void clipboard_close(int clipboard_id) {
 
 int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
 
-	// TODO
+	if (region < 0 || region > 9) {
+		printf("Trying to paste from an invalid region.\n");
+		return 0;
+	}
 
-	return 0;
+	if (clipboard_id < 0) {
+		printf("Trying to paste from an invalid fd.\n");
+		return 0;
+	}
+
+	char message[15] = "";
+
+	// bytes sent
+	int total = 0;
+
+	// starts message as all \0
+	memset(message, '\0', 15);
+
+	sprintf(message,"w %d %d", region, (int) count);
+
+	// asks the clipboard to send a message of a certain size from a certain region
+	if(writeRoutine(clipboard_id, message, sizeof(message)) == -1) {
+		// error writing
+		return 0;
+	}
+
+	// starts message as all \0
+	memset(message, '\0', 15);
+
+	if( readRoutine(clipboard_id, message, sizeof(message)) == -1) {
+		// error reading
+		return 0;
+	}
+
+	int reg = -1;
+	int len_message = -1;
+
+	// decodes the message of the information about the region
+	if (sscanf(message, "a %d %d", &reg, &len_message) != 2) {
+		printf("sscanf didn't assign the variables correctly: clipboard_paste\n");
+		return 0;
+	}
+
+	// No content in the region
+	if(len_message == 0)
+		return 0;
+
+	// if the content available is less than what exists in the region
+	if(len_message < count) {
+
+		if( (total = readRoutine(clipboard_id, buf, len_message)) == -1) {
+			// error reading
+			return 0;
+		}
+
+	} else {
+
+		if( (total = readRoutine(clipboard_id, buf, count)) == -1) {
+			// error reading
+			return 0;
+		}
+	}
+
+
+
+	return total;
 }

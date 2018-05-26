@@ -43,6 +43,9 @@ List* list_clips;
 int fd_parent;
 pthread_mutex_t parent_socket_lock;// = PTHREAD_MUTEX_INITIALIZER;
 
+//one conditional variable for each region
+pthread_cond_t wait_regions[10];
+
 /************************/
 
 void getClipboardBackUp(char const *argv[]);

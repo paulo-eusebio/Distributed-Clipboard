@@ -72,11 +72,8 @@ Onda usamos readlock dar exemplo de porque é que da jeito
 	- Stdin, lock fora do for() para ser mais rápido (source github)
 
 	- SendToChilder	
-		- SendToChildren, lock do fd, pode acontecer (na verdade só acontece no topo), recebo um 'n' dum filho e um 'c' da app e vou
-		fazer sendtochildren ao mesmo tempo
-		- ACHO QUE ISTO NAO VAI ACONTECER, PORQUE ESTAMOS A DAR LOCK DO ACESSO A LISTA DE CHILDREN, POR ISSO NUNCA 2 THREADS DIFERENTES
-		VAO CONSEGUIR ESCREVER PO MESMO SOCKET, a que chega primeiro vai ter de dar a volta toda, largar o mutex e so deopis é que a 
-		segunda consegue escrever para o filho
+		-tens que mutexar o fd do filho para quem estas a enviar porque pode acontecer tu estares a enviar-lhe o sendbackup e no
+		sendbackup ele ta na regiao 9 e queres fazer ssendchildren na regiao 2, chocam os dois a escrever para a mesma socket.
 	
 	
 

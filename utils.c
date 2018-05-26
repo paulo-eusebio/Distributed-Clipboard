@@ -100,7 +100,7 @@ void getBackup(int fd) {
 		// This guaranteed to be the first time of allocking memory for regions, so we can use malloc
 		// MUTEX - Write lock por causa da thread stdin
 		pthread_rwlock_wrlock(&regions_rwlock[i]);
-
+		// no need for broadcast because we dont have any connected app yet
 		regions[i] = (char*) mymalloc(len_message*sizeof(char));
 
 		readRoutine(fd, regions[i], len_message);
@@ -395,6 +395,88 @@ void dealPasteRequests(int fd, char information[15]) {
 	return;
 }
 
+void dealWaitRequests(int fd, char information[15]) {
+
+	int region = -1;
+	int len_message = -1;
+
+	// decodes the message of the information about the region
+	if (sscanf(information, "w %d %d", &region, &len_message) != 2) {
+		printf("sscanf didn't assign the variables correctly\n");
+		
+		return;
+	}
+	
+	if(pthread_rwlock_rdlock(&regions_rwlock[region]) != 0) {
+		perror("error rdlock in dealWaitRequests\n");
+	}
+	
+	if(pthread_cond_wait(&wait_regions[region], &regions_rwlock[region]) != 0) {
+		perror("error wait cond var in dealWaitRequests\n");
+	}
+	
+	//region's content has changed
+	
+	if(regions[region] == NULL || regions[region][0] == '\0') {
+
+		sprintf(information,"a %d %d", region, 0);
+
+		// asks the clipboard to send a message of a certain size from a certain region
+		if(writeRoutine(fd, information, 15) == -1) {
+			// error writing
+			printf("Error writing in dealWaitRequests\n");
+
+			// MUTEx UNLOCK
+			pthread_rwlock_unlock(&regions_rwlock[region]);
+
+			return;
+		}
+
+		// MUTEx UNLOCK
+		pthread_rwlock_unlock(&regions_rwlock[region]);
+
+		return;
+
+	} else {
+
+		sprintf(information,"a %d %d", region, (int) regions_length[region]);
+
+		// asks the clipboard to send a message of a certain size from a certain region
+		if(writeRoutine(fd, information, 15) == -1) {
+			// error writing
+			printf("Error writing in dealWaitRequests\n");
+
+			// MUTEx UNLOCK
+			pthread_rwlock_unlock(&regions_rwlock[region]);
+
+			return;
+		}
+
+	}
+
+	//case the app requests more bytes than the actual region size
+	if(len_message > regions_length[region]) 
+		len_message = regions_length[region];
+
+	// no need to do a lock in this fd because an app can't send anything while waiting to receive the paste
+
+	// sends the region's content 
+	if(writeRoutine(fd, regions[region], len_message) == -1) {
+		printf("Error writing in dealWaitRequests\n");
+
+		// MUTEX UNLOCK
+		pthread_rwlock_unlock(&regions_rwlock[region]);
+
+		return;
+	}
+
+	// MUTEX UNLOCK
+	if(pthread_rwlock_unlock(&regions_rwlock[region])!= 0) {
+		perror("error unlock in dealWaitRequests\n");
+	}
+	return;
+}
+
 
 /*
 *
@@ -535,14 +617,3 @@ void sendBackup(int fd) {
 }
 
 
-
-
-
-
-
-
-
-
-
-	
-	

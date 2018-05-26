@@ -208,6 +208,10 @@ void * thread_clips(void * data) {
 
 				// MUTEX UNLOCK - WRITELOCK
 				pthread_rwlock_unlock(&regions_rwlock[region]);
+				//wakes all threads waiting for this region to update
+				if(pthread_cond_broadcast(&wait_regions[region]) != 0) {
+					perror("error broadcasting conditional var\n");
+				}
 				
 			// if i'm not a single clipboard, have a parent
 			} else {
@@ -276,6 +280,10 @@ void * thread_clips(void * data) {
 
 			// MUTEX UNLOCK - WRITELOCK
 			pthread_rwlock_unlock(&regions_rwlock[region]);
+			if(pthread_cond_broadcast(&wait_regions[region]) != 0) {
+				perror("error broadcasting conditional var\n");
+			}
+			
 
 		}
 
@@ -355,7 +363,7 @@ void * thread_apps(void * data) {
 		// Its a request of the type wait
 		} else if (information[0] == 'w') {
 
-			// TODO
+			dealWaitRequests(fd, information);
 
 		// Its a warning that the app is going to close the connection
 		} else if (information[0] == 's') {
