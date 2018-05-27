@@ -2,7 +2,12 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#include "utils.h"
 
 int main(){
 	int action, region, copyData, pasteData;
@@ -11,7 +16,7 @@ int main(){
 	dados[1] = '\0';
 
 	// Connects to the cliboard
-	int sock_fd = clipboard_connect("./");
+	int sock_fd = clipboard_connect(SOCK_ADDRESS);
 	if(sock_fd == -1){
 		exit(-1);
 	}
