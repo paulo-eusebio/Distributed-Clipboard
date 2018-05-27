@@ -21,8 +21,6 @@ int clipboard_connect(char *clipboard_dir){
 		perror("socket: ");
 		exit(-1);
 	}
-	
-	printf(" socket created \n");
 
 	client_addr.sun_family = AF_UNIX;
 	sprintf(client_addr.sun_path, "./socket_%d",getpid());
@@ -37,8 +35,8 @@ int clipboard_connect(char *clipboard_dir){
 
 	int err_c = connect(sock_fd, (const struct sockaddr *) &server_addr, sizeof(server_addr));
 	if(err_c==-1){
-				printf("Error connecting\n");
-				exit(-1);
+		printf("Error connecting\n");
+		exit(-1);
 	}
 
 	printf("connected %d\n", err_c);
@@ -72,12 +70,14 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 	// to insert inside a certain region
 	if(writeRoutine(clipboard_id, message, (size_t) sizeof(message)) == -1) {
 		// error writing
+		perror("Error in writeRoutine of clipboard_copy");
 		return 0;
 	}
 
 	// sends the info to copy to the region
 	if((total = writeRoutine(clipboard_id, buf, count)) == -1) {
 		// error writing
+		perror("Error in writeRoutine of clipboard_copy");
 		return 0;
 	}
 
@@ -101,6 +101,8 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	// bytes sent
 	int total = 0;
 
+	int error_check = -2;
+
 	// starts message as all \0
 	memset(message, '\0', 15);
 
@@ -109,14 +111,19 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	// asks the clipboard to send a message of a certain size from a certain region
 	if(writeRoutine(clipboard_id, message, sizeof(message)) == -1) {
 		// error writing
+		perror("Error in writeRoutine of clipboard_paste");
 		return 0;
 	}
 
 	// starts message as all \0
 	memset(message, '\0', 15);
 
-	if( readRoutine(clipboard_id, message, sizeof(message)) == -1) {
+	if( (error_check = readRoutine(clipboard_id, message, sizeof(message))) == -1) {
 		// error reading
+		perror("Error in readRoutine of clipboard_paste");
+		return 0;
+	} else if(error_check == 0) {
+		printf("Client disconnected. clipboard_paste\n");
 		return 0;
 	}
 
@@ -138,6 +145,7 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
 		if( (total = readRoutine(clipboard_id, buf, len_message)) == -1) {
 			// error reading
+			perror("Error in readRoutine of clipboard_paste");
 			return 0;
 		}
 
@@ -145,6 +153,7 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 
 		if( (total = readRoutine(clipboard_id, buf, count)) == -1) {
 			// error reading
+			perror("Error in readRoutine of clipboard_paste");
 			return 0;
 		}
 	}
@@ -160,6 +169,7 @@ void clipboard_close(int clipboard_id) {
 	// warns the clipboard that the app is going to disconnect
 	if(writeRoutine(clipboard_id, message, sizeof(message)) == -1) {
 		// error writing
+		perror("Error in writeRoutine of clipboard_close");
 		return;
 	}
 
@@ -187,6 +197,8 @@ int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
 	// bytes sent
 	int total = 0;
 
+	int error_check = -2;
+
 	// starts message as all \0
 	memset(message, '\0', 15);
 
@@ -195,14 +207,19 @@ int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
 	// asks the clipboard to send a message of a certain size from a certain region
 	if(writeRoutine(clipboard_id, message, sizeof(message)) == -1) {
 		// error writing
+		perror("Error in writeRoutine of clipboard_wait");
 		return 0;
 	}
 
 	// starts message as all \0
 	memset(message, '\0', 15);
 
-	if( readRoutine(clipboard_id, message, sizeof(message)) == -1) {
+	if( (error_check = readRoutine(clipboard_id, message, sizeof(message))) == -1) {
 		// error reading
+		perror("Error in readRoutine of clipboard_wait");
+		return 0;
+	} else if(error_check == 0) {
+		printf("Clipboard disconnected in clipboard_wait.\n");
 		return 0;
 	}
 
@@ -224,6 +241,10 @@ int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
 
 		if( (total = readRoutine(clipboard_id, buf, len_message)) == -1) {
 			// error reading
+			perror("Error in readRoutine of clipboard_wait");
+			return 0;
+		} else if(total == 0) {
+			printf("Client disconnected in clipboard_wait\n");
 			return 0;
 		}
 
@@ -231,6 +252,10 @@ int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
 
 		if( (total = readRoutine(clipboard_id, buf, count)) == -1) {
 			// error reading
+			perror("Error in readRoutine of clipboard_wait");
+			return 0;
+		} else if(total == 0) {
+			printf("Client disconnected in clipboard_wait\n");
 			return 0;
 		}
 	}

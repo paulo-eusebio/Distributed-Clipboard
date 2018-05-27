@@ -100,6 +100,9 @@ void getBackup(int fd) {
 
 		// that specific region doesn't have content, so there's no content to be sent afterward
 		if (len_message == 0) {
+			memset(information, '\0', sizeof(information));
+			region = -1;
+			len_message = -1;
 			continue;
 		}
 
@@ -301,7 +304,7 @@ void dealCopyRequests(int fd, char information[15]) {
 	char *receive = (char*)mymalloc(sizeof(char)*len_message);
 
 	if((error_check =readRoutine(fd, receive, len_message)) == 0) { 
-		printf("client disconnected, read is 0\n");
+		printf("app disconnected in readRoutine of dealCopyRequests, read is 0\n");
 		free(receive);
 		return;
 	} else if (error_check == -1) {
@@ -592,6 +595,11 @@ int sendToChildren(char *message, int region, int len_message) {
 			if( pthread_mutex_unlock(aux->mutex) != 0) {
 				perror("Error unlocking a mutex in sendToChildren");
 			}
+
+			if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+				perror("Error unlocking a mutex of clips in sendToChildren");
+			}
+
 			return -1;
 		}
 
@@ -602,6 +610,11 @@ int sendToChildren(char *message, int region, int len_message) {
 			if( pthread_mutex_unlock(aux->mutex) != 0) {
 				perror("Error unlocking a mutex in sendToChildren");
 			}
+
+			if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+				perror("Error unlocking a mutex of clips in sendToChildren");
+			}
+
 			return -1;
 		}
 
@@ -690,7 +703,7 @@ void sendBackup(int fd) {
 	memset(information, '\0', sizeof(information));
 
 	//  MUTEX - MUTEX DA CLIPSLIST
-	if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
+	/*if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
 		perror("Error locking a mutex of clips in sendBackup");
 	}
 
@@ -700,7 +713,12 @@ void sendBackup(int fd) {
 	if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
 		perror("Error unlocking a mutex of clips in sendBackup");
 	}
-	
+
+	// MUTEX - LOCK deste fd
+	if( pthread_mutex_lock(mutex) != 0) {
+		perror("Error locking a mutex in sendBackup");
+	}*/
+
 	for(int i = 0; i < NUM_REG; i++) {
 
 		// MUTEX - READLOCK
@@ -713,32 +731,31 @@ void sendBackup(int fd) {
 		// não damos unlock aqui porque não queremos arriscar enviar uma região de tamanho diferente
 		// ao combinado na mensagem de aviso
 
-		// MUTEX - LOCK deste fd
-		if( pthread_mutex_lock(mutex) != 0) {
-			perror("Error locking a mutex in sendBackup");
-		}
-
 		if(writeRoutine(fd, information, sizeof(information)) == -1) {
 			printf("Error returned in writeRoutine of sendBackup\n");
-			if( pthread_mutex_unlock(mutex) != 0) {
+			/*if( pthread_mutex_unlock(mutex) != 0) {
 				perror("Error unlocking a mutex in sendBackup");
+			}*/
+
+			if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
+				perror("Error unlocking rwlock in sendBackup");
 			}
+
 			return;
 		}
 
 		if(regions_length[i] != 0) {
 			if(writeRoutine(fd, regions[i], regions_length[i]) == -1 ) {
 				printf("Error returned in writeRoutine of sendBackup\n");
-				if( pthread_mutex_unlock(mutex) != 0) {
+				/*if( pthread_mutex_unlock(mutex) != 0) {
 					perror("Error unlocking a mutex in sendBackup");
+				}*/
+
+				if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
+					perror("Error unlocking rwlock in sendBackup");
 				}
 				return;
 			}
-		}
-
-		// MUTEX UNLOCK deste fd
-		if( pthread_mutex_unlock(mutex) != 0) {
-			perror("Error unlocking a mutex in sendBackup");
 		}
 
 		// UNLOCK - READLOCK
@@ -748,6 +765,12 @@ void sendBackup(int fd) {
 		
 		memset(information, '\0', sizeof(information));
 	}
+
+	// MUTEX UNLOCK deste fd
+	/*if( pthread_mutex_unlock(mutex) != 0) {
+		perror("Error unlocking a mutex in sendBackup");
+	}*/
+
 	return;
 }
 
