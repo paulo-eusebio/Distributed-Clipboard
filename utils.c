@@ -302,9 +302,11 @@ void dealCopyRequests(int fd, char information[15]) {
 
 	if((error_check =readRoutine(fd, receive, len_message)) == 0) { 
 		printf("client disconnected, read is 0\n");
+		free(receive);
 		return;
 	} else if (error_check == -1) {
 		printf("Read error in dealCopyRequests\n");
+		free(receive);
 		return;
 	}
 
@@ -333,6 +335,9 @@ void dealCopyRequests(int fd, char information[15]) {
 		if(sendToChildren(regions[region], region, len_message) == -1){
 			printf("Error writing in dealCopyRequests\n");
 			free(receive);
+			if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0){
+				perror("Error doing unlock in dealCopyRequests\n");
+			}
 			return;
 		}
 
