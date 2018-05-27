@@ -66,6 +66,7 @@ void getBackup(int fd) {
 
 	int region = -1;
 	int len_message = -1;
+	int error_check = -2;
 
 	memset(information, '\0', sizeof(information));
 
@@ -77,8 +78,13 @@ void getBackup(int fd) {
 	for (int i = 0; i < NUM_REG; i++) {
 
 		// expected to receive "n region size", with a maximum of 15 characters
-		readRoutine(fd, information, sizeof(information));
-		// TODO ERROR TEST THIS
+		if((error_check = readRoutine(fd, information, sizeof(information))) == 0) {
+			printf("Client disconnected, ending getBackup\n");
+			return;
+		} else if(error_check == -1) {
+			printf("Error in readRoutine of getBackup\n");
+			return;
+		}
 
 		// decodes the message of the information about the region
 		if (sscanf(information, "m %d %d", &region, &len_message) != 2) {
@@ -99,17 +105,45 @@ void getBackup(int fd) {
 
 		// This guaranteed to be the first time of allocking memory for regions, so we can use malloc
 		// MUTEX - Write lock por causa da thread stdin
-		pthread_rwlock_wrlock(&regions_rwlock[i]);
+		if(pthread_rwlock_wrlock(&regions_rwlock[i]) != 0) {
+			perror("Error doing wrlock in getBackup\n");
+		}
+
+
 		// no need for broadcast because we dont have any connected app yet
 		regions[i] = (char*) mymalloc(len_message*sizeof(char));
 
-		readRoutine(fd, regions[i], len_message);
-		// TODO ERROR TEST THIS
+		if((error_check = (readRoutine(fd, regions[i], len_message))) == 0) {
+
+			printf("Client disconnected, ending getBackup\n");
+			regions_length[i] = len_message;
+
+			// MUTEX UNLOCK
+			if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0) {
+				perror("Error doing unlock in getBackup\n");
+			}
+
+			return;
+
+		} else if(error_check == -1) {
+
+			printf("Error in readRoutine of getBackup\n");
+			regions_length[i] = len_message;
+
+			// MUTEX UNLOCK
+			if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0) {
+				perror("Error doing unlock in getBackup\n");
+			}
+
+			return;
+		}
 
 		regions_length[i] = len_message;
 
 		// MUTEX UNLOCK
-		pthread_rwlock_unlock(&regions_rwlock[i]);
+		if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0) {
+			perror("Error doing unlock in getBackup\n");
+		}
 
 		// resets variables
 		memset(information, '\0', sizeof(information));
@@ -135,7 +169,7 @@ int writeRoutine(int fd, char *buffer, size_t length) {
 			printf("servidor de mensagens disconectou\n");
 			return -1;*/
 		if(nwritten <= 0){
-			printf("ocorreu um erro no write\n");
+			printf("Error occured in writeRoutine\n");
 			return -1;
 		}
 		nleft -= nwritten;
@@ -158,9 +192,11 @@ int readRoutine(int fd, char *storageBuf, size_t length){
 		nstore += nread;
 		nleft -= nread;
 		if(nread==-1){
-			printf("Ocorreu um erro no read\n");
+			// error reading
+			perror("readRoutine returned an error\n");
 			return -1; 
 		}else if(nread==0){
+			// eof - disconnected
 			break;
 		}
 		readBuf += nread;
@@ -209,8 +245,6 @@ void freeClipboard() {
 		}
 	}*/
 
-	// @TODO DAR SHUTDOWN DAS THREADS??????? <--- Dúvida
-
 	// free memory of re	gions
 	for (int i = 0; i < 10; ++i) {
 	    free(regions[i]);
@@ -255,6 +289,7 @@ void dealCopyRequests(int fd, char information[15]) {
 
 	int region = -1;
 	int len_message = -1;
+	int error_check = -2;
 
 	// decodes the message of the information about the region
 	if (sscanf(information, "c %d %d", &region, &len_message) != 2) {
@@ -265,23 +300,30 @@ void dealCopyRequests(int fd, char information[15]) {
 
 	char *receive = (char*)mymalloc(sizeof(char)*len_message);
 
-	if(readRoutine(fd, receive, len_message) == 0) { 
+	if((error_check =readRoutine(fd, receive, len_message)) == 0) { 
 		printf("client disconnected, read is 0\n");
 		return;
-	} 
+	} else if (error_check == -1) {
+		printf("Read error in dealCopyRequests\n");
+		return;
+	}
 
 	// I'm the top clipboard then save in the clipboard and send to my child
 	if (fd_parent == -1) {
 
 		// MUTEX - WRITELOCK, porque outros podem querer ler a region em paralelo, mas só um pode escrever
-		pthread_rwlock_wrlock(&regions_rwlock[region]);
+		if(pthread_rwlock_wrlock(&regions_rwlock[region]) != 0){
+			perror("Error doing wrlock in dealCopyRequests\n");
+		}
 
 		//clears the previous stored message, by all its length
 		if(regions[region] != NULL) {
 			memset(regions[region], '\0', regions_length[region]);
 		}
 
-		regions[region] = (char*)realloc(regions[region], len_message);
+		if( (regions[region] = (char*)realloc(regions[region], len_message)) == NULL){
+			printf("Realloc failed, NULL was returned. dealCopyRequests\n");
+		}
 
 		memcpy(regions[region], receive, len_message);
 
@@ -295,7 +337,9 @@ void dealCopyRequests(int fd, char information[15]) {
 		}
 
 		// MUTEX Unlock
-		pthread_rwlock_unlock(&regions_rwlock[region]);
+		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0){
+			perror("Error doing unlock in dealCopyRequests\n");
+		}
 
 	} else {
 
@@ -329,15 +373,15 @@ void dealPasteRequests(int fd, char information[15]) {
 	// decodes the message of the information about the region
 	if (sscanf(information, "p %d %d", &region, &len_message) != 2) {
 		printf("sscanf didn't assign the variables correctly\n");
-		
 		return;
 	}
 
 	memset(information, '\0', 15);
 
 	// MUTEX - READLOCK
-	pthread_rwlock_rdlock(&regions_rwlock[region]);
-
+	if(pthread_rwlock_rdlock(&regions_rwlock[region]) != 0) {
+		perror("Error doing rdlock in dealPasteRequests\n");
+	}
 
 	// case that the region doesnt have content
 	if(regions[region] == NULL || regions[region][0] == '\0') {
@@ -350,13 +394,17 @@ void dealPasteRequests(int fd, char information[15]) {
 			printf("Error writing in dealPasteRequests\n");
 
 			// MUTEx UNLOCK
-			pthread_rwlock_unlock(&regions_rwlock[region]);
+			if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+				perror("Error doing unlock in dealPasteRequests\n");
+			}
 
 			return;
 		}
 
 		// MUTEx UNLOCK
-		pthread_rwlock_unlock(&regions_rwlock[region]);
+		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+			perror("Error doing unlock in dealWaitRequests\n");
+		}
 
 		return;
 
@@ -370,7 +418,9 @@ void dealPasteRequests(int fd, char information[15]) {
 			printf("Error writing in dealPasteRequests\n");
 
 			// MUTEx UNLOCK
-			pthread_rwlock_unlock(&regions_rwlock[region]);
+			if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+				perror("Error doing unlock in dealPasteRequests\n");
+			}
 
 			return;
 		}
@@ -388,13 +438,17 @@ void dealPasteRequests(int fd, char information[15]) {
 		printf("Error writing in dealPasteRequests\n");
 
 		// MUTEX UNLOCK
-		pthread_rwlock_unlock(&regions_rwlock[region]);
+		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+			perror("Error doing unlock in dealPasteRequests\n");
+		}
 
 		return;
 	}
 
 	// MUTEX UNLOCK
-	pthread_rwlock_unlock(&regions_rwlock[region]);
+	if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+		perror("Error doing unlock in dealPasteRequests\n");
+	}
 
 	return;
 }
@@ -407,7 +461,6 @@ void dealWaitRequests(int fd, char information[15]) {
 	// decodes the message of the information about the region
 	if (sscanf(information, "w %d %d", &region, &len_message) != 2) {
 		printf("sscanf didn't assign the variables correctly\n");
-		
 		return;
 	}
 
@@ -444,7 +497,9 @@ void dealWaitRequests(int fd, char information[15]) {
 		}
 
 		// MUTEx UNLOCK
-		pthread_rwlock_unlock(&regions_rwlock[region]);
+		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+			perror("Error doing unlock in dealWaitRequests\n");
+		}
 
 		return;
 
@@ -458,7 +513,9 @@ void dealWaitRequests(int fd, char information[15]) {
 			printf("Error writing in dealWaitRequests\n");
 
 			// MUTEx UNLOCK
-			pthread_rwlock_unlock(&regions_rwlock[region]);
+			if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+				perror("Error doing unlock in dealWaitRequests\n");
+			}
 
 			return;
 		}
@@ -476,7 +533,9 @@ void dealWaitRequests(int fd, char information[15]) {
 		printf("Error writing in dealWaitRequests\n");
 
 		// MUTEX UNLOCK
-		pthread_rwlock_unlock(&regions_rwlock[region]);
+		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+			perror("Error doing unlock in dealWaitRequests\n");
+		}
 
 		return;
 	}
@@ -485,6 +544,7 @@ void dealWaitRequests(int fd, char information[15]) {
 	if(pthread_rwlock_unlock(&regions_rwlock[region])!= 0) {
 		perror("error unlock in dealWaitRequests\n");
 	}
+
 	return;
 }
 
@@ -523,12 +583,20 @@ int sendToChildren(char *message, int region, int len_message) {
 		// to insert inside a certain region
 		if(writeRoutine(aux->fd, information, (size_t) sizeof(information)) == -1) {
 			// error writing
+			printf("Error in writeRoutine of sendToChildren\n");
+			if( pthread_mutex_unlock(aux->mutex) != 0) {
+				perror("Error unlocking a mutex in sendToChildren");
+			}
 			return -1;
 		}
 
 		// sends the info for the child clipboard to save in that region
 		if(writeRoutine(aux->fd, message, len_message) == -1) {
 			// error writing
+			printf("Error in writeRoutine of sendToChildren\n");
+			if( pthread_mutex_unlock(aux->mutex) != 0) {
+				perror("Error unlocking a mutex in sendToChildren");
+			}
 			return -1;
 		}
 
@@ -574,9 +642,6 @@ int sendToParent(char *message, int region, int len_message) {
 
 	sprintf(information,"n %d %d", region, len_message);
 	
-	printf("info=%s\n", information);
-	
-
 	//MUTEX LOCK socket para fd parent
 	
 	if( pthread_mutex_lock(&parent_socket_lock) != 0) {
@@ -587,12 +652,20 @@ int sendToParent(char *message, int region, int len_message) {
 	// to insert inside a certain region
 	if(writeRoutine(fd_parent, information, (size_t) sizeof(information)) == -1) {
 		// error writing
+		printf("Error in writeRoutine of sendToParent\n");
+		if( pthread_mutex_unlock(&parent_socket_lock) != 0) {
+			perror("Error unlocking a mutex in send parent");
+		}
 		return -1;
 	}
 	
 	// sends the info for the parent clipboard to save (in case of being the single) or send to its child
 	if(writeRoutine(fd_parent, message, len_message) == -1) {
 		// error writing
+		printf("Error in writeRoutine of sendToParent\n");
+		if( pthread_mutex_unlock(&parent_socket_lock) != 0) {
+			perror("Error unlocking a mutex in send parent");
+		}
 		return -1;
 	}
 
@@ -626,7 +699,9 @@ void sendBackup(int fd) {
 	for(int i = 0; i < NUM_REG; i++) {
 
 		// MUTEX - READLOCK
-		pthread_rwlock_rdlock(&regions_rwlock[i]);
+		if(pthread_rwlock_rdlock(&regions_rwlock[i]) != 0) {
+			perror("Error rdlocking in sendBackup");
+		}
 
 		sprintf(information, "m %d %d", i, (int)regions_length[i]);
 
@@ -638,18 +713,33 @@ void sendBackup(int fd) {
 			perror("Error locking a mutex in sendBackup");
 		}
 
-		writeRoutine(fd, information, sizeof(information)); //TODO check errors!!
+		if(writeRoutine(fd, information, sizeof(information)) == -1) {
+			printf("Error returned in writeRoutine of sendBackup\n");
+			if( pthread_mutex_unlock(mutex) != 0) {
+				perror("Error unlocking a mutex in sendBackup");
+			}
+			return;
+		}
 
 		if(regions_length[i] != 0) {
-			writeRoutine(fd, regions[i], regions_length[i]);
+			if(writeRoutine(fd, regions[i], regions_length[i]) == -1 ) {
+				printf("Error returned in writeRoutine of sendBackup\n");
+				if( pthread_mutex_unlock(mutex) != 0) {
+					perror("Error unlocking a mutex in sendBackup");
+				}
+				return;
+			}
 		}
+
 		// MUTEX UNLOCK deste fd
 		if( pthread_mutex_unlock(mutex) != 0) {
 			perror("Error unlocking a mutex in sendBackup");
 		}
 
 		// UNLOCK - READLOCK
-		pthread_rwlock_unlock(&regions_rwlock[i]);
+		if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
+			perror("Error unlocking rwlock in sendBackup");
+		}
 		
 		memset(information, '\0', sizeof(information));
 	}

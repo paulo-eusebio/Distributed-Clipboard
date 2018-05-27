@@ -130,10 +130,6 @@ void destroy(List * list){
         perror("Closing file descriptor");
     }
 
-    if( pthread_cancel(current->id) != 0) {
-      perror("Error while closing threads");
-    }
-
     free(current);
     current = next;
   }

@@ -5,13 +5,13 @@
 #include <string.h>
 
 int main(){
-	int action, region, copyData, pasteData;
-	char dados[2], aux[50];
+	int copyData;
+	char dados[2];
 
 	dados[1] = '\0';
 
 	// Connects to the cliboard
-	int sock_fd = clipboard_connect("./");
+	int sock_fd = clipboard_connect(SOCK_ADDRESS);
 	if(sock_fd == -1){
 		exit(-1);
 	}
