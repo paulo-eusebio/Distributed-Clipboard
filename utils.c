@@ -9,9 +9,22 @@ void * mymalloc(int size){
 	return node;
 }
 
+void sigPipe() {
+	void (*old_handler)(int);
+		if( (old_handler = signal(SIGPIPE, SIG_IGN)) == SIG_ERR) {
+			printf("Houve um conflito a ignorar os sinais SIGPIPEs\n");
+			exit(1);
+		}
+}
+
 
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
+
+	// Free resources
+	pthread_detach(thread_app_listen_id);
+	pthread_detach(thread_clip_id);
+	pthread_detach(stdin_thread);
 
 	freeClipboard();
 
@@ -189,7 +202,8 @@ int writeRoutine(int fd, char *buffer, size_t length) {
  * until it reads the all "length" that is supposed*/
 int readRoutine(int fd, char *storageBuf, size_t length){
 	int nstore=0,nread=0,nleft=length;
-	char *readBuf = storageBuf;
+	char *readBuf = NULL;
+	readBuf = storageBuf;
 	while(nleft>0){
 		nread=read(fd,readBuf,nleft);		
 		nstore += nread;
@@ -219,34 +233,9 @@ void freeClipboard() {
 
 	unlink(SOCK_ADDRESS);
 
-	// Closes all file descriptors in use
-	/*if(list_clips->head != NULL) {
-		Node *aux = list_clips->head;
-		while(aux->next != NULL){
-			if(close(aux->fd)) {
-				perror("Closing TCP file descriptor");
-			}
-			
-			aux = aux->next;
-		}
-		if(close(aux->fd)) {
-			perror("Closing TCP file descriptor");
-		}
-	}
-
-	if(list_apps->head != NULL) {
-		Node *aux = list_apps->head;
-		while(aux->next != NULL){
-			if(close(aux->fd)) {
-				perror("Closing UNIX file descriptor");
-			}
-
-			aux = aux->next;
-		}
-		if(close(aux->fd)) {
-			perror("Closing UNIX file descriptor");
-		}
-	}*/
+	pthread_cancel(thread_app_listen_id);
+	pthread_cancel(thread_clip_id);
+	pthread_cancel(stdin_thread);
 
 	// free memory of re	gions
 	for (int i = 0; i < 10; ++i) {
@@ -561,6 +550,7 @@ void dealWaitRequests(int fd, char information[15]) {
 *
 * Iterates through the lists of fds of children and send the information about the region
 *
+* returns -1 if the operations were correct and the fd if not
 */
 int sendToChildren(char *message, int region, int len_message) {
 
@@ -600,7 +590,9 @@ int sendToChildren(char *message, int region, int len_message) {
 				perror("Error unlocking a mutex of clips in sendToChildren");
 			}
 
-			return -1;
+			// if there was an error while writing to a guy then no need to write again
+			aux = aux->next;
+			continue;
 		}
 
 		// sends the info for the child clipboard to save in that region
@@ -615,7 +607,8 @@ int sendToChildren(char *message, int region, int len_message) {
 				perror("Error unlocking a mutex of clips in sendToChildren");
 			}
 
-			return -1;
+			aux = aux->next;
+			continue;
 		}
 
 		// MUTEX UNLOCK - LOCK do fd <---- Desnecessário

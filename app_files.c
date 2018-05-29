@@ -89,8 +89,8 @@ int main(int argc, char const *argv[]) {
 			printf("Image saved in file'\n");
 
 			FILE *outputfile;
-			char outputname[11] = "output.";
-			strcat(outputname, argv[2]);
+			char outputname[11] = "output";
+			//strcat(outputname, argv[2]);
 			outputfile = fopen(outputname, "w");
 			fwrite(recv_buf, 1, many, outputfile);
 			fclose(outputfile);

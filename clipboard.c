@@ -3,10 +3,7 @@
 // where the magic happen
 int main(int argc, char const *argv[]) {
 
-	// Threads Declaration
-	pthread_t thread_app_listen_id;
-	pthread_t thread_clip_id;
-	pthread_t stdin_thread;
+	sigPipe();
 
 	// initialization at -1 (parentless)
 	fd_parent = -1;
@@ -66,6 +63,11 @@ int main(int argc, char const *argv[]) {
 	pthread_join(stdin_thread, NULL);
 	printf("Turning off\n");
 	freeClipboard();
+
+	// Free resources
+	pthread_detach(thread_app_listen_id);
+	pthread_detach(thread_clip_id);
+	pthread_detach(stdin_thread);
 	printf("Bye\n");
 	return(0);
 }

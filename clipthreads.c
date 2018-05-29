@@ -45,7 +45,7 @@ void * thread_app_listen(void * data){
 			perror("Error locking a mutex of apps in thread_app_listen");
 		}
 
-		add(fd_connect, thread_apps_id, NULL, list_apps);
+		add(fd_connect, &thread_apps_id, NULL, list_apps);
 
 		// MUTEX UNLOCK - MUTEXAPPSLIST
 		if( pthread_mutex_unlock(&list_apps->list_mutex) != 0) {
@@ -120,15 +120,6 @@ void * thread_clips_listen(void * data) {
 			perror("Error locking a mutex of clips in thread_clips");
 		}
 
-		/*// initializes mutex for clipboard fd
-		pthread_mutex_t mutex;
-
-		if( pthread_mutex_init(&mutex, NULL) != 0) {
-    		perror("Error initiating mutex");
-  		}
-
-		add(newfd, thread_clips_id, &mutex, list_clips);*/
-
 		// MUTEX UNLOCK
 		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
 			perror("Error unlocking a mutex of clips in thread_clips");
@@ -155,6 +146,8 @@ void * thread_clips(void * data) {
 	int region = -1;
 	int len_message = -1;
 	int error_check = -1;
+	// to close the fd in case of need
+	int error_fd = -1;
 
 	printf("Started a thread to listen to this connection!\n");
 
@@ -186,7 +179,9 @@ void * thread_clips(void * data) {
 	    		perror("Error initiating mutex");
 	  		}
 
-			add(fd, pthread_self(), &mutex, list_clips);
+	  		pthread_t myvalue = pthread_self();
+
+			add(fd, &myvalue, &mutex, list_clips);
 			
 		// received a message from children
 		} else if (information[0] == 'n') {
@@ -262,6 +257,7 @@ void * thread_clips(void * data) {
 					printf("Error writing in thread_clips, sendToParent\n");
 
 					// TODO ver se é preciso dar continue e limpar as variaveis
+					
 				}
 
 				free(aux_buffer);
@@ -304,7 +300,7 @@ void * thread_clips(void * data) {
 			regions_length[region] = len_message;
 
 			// propagates the message to its children
-			if(sendToChildren(regions[region], region, len_message) == -1){
+			if((error_fd = sendToChildren(regions[region], region, len_message)) != -1){
 				printf("Error writing in thread_clips\n");
 
 				// TODO ver se é preciso dar continue e limpar as variaveis
@@ -346,6 +342,8 @@ void * thread_clips(void * data) {
 	}
 
 	close(fd);
+
+	pthread_detach(pthread_self());
 
 	pthread_exit(NULL);
 
@@ -411,6 +409,8 @@ void * thread_apps(void * data) {
 	// then close it
 	close(fd);
 
+	pthread_detach(pthread_self());
+
 	pthread_exit(NULL);
 	
 	return NULL;
@@ -432,8 +432,10 @@ void * thread_stdin(void * data) {
 		sscanf(bufstdin, "%[^\n]", message);
 		printf("received stdin: %s\n", message);	
 		
-		if(strcmp(message,"exit")==0) 
+		if(strcmp(message,"exit")==0) {
+
 			pthread_exit(NULL);
+		}
 
 		if(strcmp(message,"print")==0) { //se tiver \0 no meio, prolly dont funciona
 
@@ -493,6 +495,8 @@ void * thread_stdin(void * data) {
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));
 	}
+
+	pthread_detach(pthread_self());
 
 	pthread_exit(NULL);
 }
