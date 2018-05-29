@@ -10,8 +10,8 @@
 #include "utils.h"
 
 int main(){
-	int action, region, copyData, pasteData;
-	char dados[2], aux[50];
+	int copyData;
+	char dados[2];
 
 	dados[1] = '\0';
 

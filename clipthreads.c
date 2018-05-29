@@ -126,9 +126,9 @@ void * thread_clips_listen(void * data) {
 		if( pthread_mutex_init(&mutex, NULL) != 0) {
     		perror("Error initiating mutex");
   		}
-
+		
 		add(newfd, thread_clips_id, &mutex, list_clips);
-
+		
 		// MUTEX UNLOCK
 		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
 			perror("Error unlocking a mutex of clips in thread_clips");
@@ -366,8 +366,6 @@ void * thread_apps(void * data) {
 			break;
 		} 
 
-		printf("first message: %s\n", information);
-
 		// Its a request of the type copy
 		if (information[0] == 'c') {
 
@@ -424,7 +422,12 @@ void * thread_stdin(void * data) {
 	char message[20];
 	
 	while(1) {
-		fgets(bufstdin, MAX_INPUT, stdin);
+		if(fgets(bufstdin, 20, stdin) == NULL) {
+			printf("Nothing could be read\n");
+			memset(bufstdin, '\0', strlen(bufstdin));	
+			memset(message, '\0', strlen(message));
+			continue;
+		}
 		sscanf(bufstdin, "%[^\n]", message);
 		printf("received stdin: %s\n", message);	
 		
