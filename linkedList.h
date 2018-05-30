@@ -8,7 +8,7 @@
 
 typedef struct node {
   int fd;
-  pthread_t id;
+  pthread_t *id;
   pthread_mutex_t *mutex;
   struct node * next;
 } Node;
@@ -20,9 +20,9 @@ typedef struct list {
 } List;
 
 
-Node *createnode(int fd, pthread_t thread_id, pthread_mutex_t *mutex);
+Node *createnode(int fd, pthread_t *thread_id, pthread_mutex_t *mutex);
 List * emptylist();
-void add(int fd, pthread_t thread_id, pthread_mutex_t *mutex, List * list);
+void add(int fd, pthread_t *thread_id, pthread_mutex_t *mutex, List * list);
 void freeNode(int data, List * list);
 void destroyNodeMutex(int fd, List * list);
 pthread_mutex_t *getNodeMutex(int fd, List * list);

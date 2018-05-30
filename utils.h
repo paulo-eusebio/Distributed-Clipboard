@@ -33,6 +33,8 @@
 #define PORT_MIN 8000
 #define PORT_MAX 8100
 
+void sigPipe();
+
 void * mymalloc(int size);
 
 char * getBuffer(int type, int region, char *message, int length);

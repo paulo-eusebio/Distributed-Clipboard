@@ -1,6 +1,6 @@
 #include "linkedList.h"
 
-Node *createnode(int fd, pthread_t thread_id, pthread_mutex_t *mutex){
+Node *createnode(int fd, pthread_t *thread_id, pthread_mutex_t *mutex){
   Node * newNode = malloc(sizeof(Node));
   newNode->fd = fd;
   newNode->id = thread_id;
@@ -30,16 +30,16 @@ void display(List * list) {
     return;
 
   while(current->next != NULL){
-    printf("%d, %d;", current->fd, (int) current->id);
+    printf("%d, %d;", current->fd, (int) *current->id);
     current = current->next;
   }
 
-  printf("%d, %d", current->fd, (int) current->id);
+  printf("%d, %d", current->fd, (int) *current->id);
 }
 
 
 /// adds to the end of the list
-void add(int fd, pthread_t thread_id, pthread_mutex_t *mutex, List * list){
+void add(int fd, pthread_t *thread_id, pthread_mutex_t *mutex, List * list){
   Node * current = NULL;
 
   if(list->head == NULL){
@@ -129,6 +129,8 @@ void destroy(List * list){
     if( close(current->fd) ) {
         perror("Closing file descriptor");
     }
+
+    pthread_detach(*current->id);
 
     free(current);
     current = next;

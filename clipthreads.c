@@ -45,7 +45,7 @@ void * thread_app_listen(void * data){
 			perror("Error locking a mutex of apps in thread_app_listen");
 		}
 
-		add(fd_connect, thread_apps_id, NULL, list_apps);
+		add(fd_connect, &thread_apps_id, NULL, list_apps);
 
 		// MUTEX UNLOCK - MUTEXAPPSLIST
 		if( pthread_mutex_unlock(&list_apps->list_mutex) != 0) {
@@ -113,27 +113,18 @@ void * thread_clips_listen(void * data) {
 
 		// Threads Variables
 		pthread_t thread_clips_id;
-
+/*
 		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
 		// MUTEX LOCK - MUTEXCLIPSLIST
 		if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
 			perror("Error locking a mutex of clips in thread_clips");
 		}
 
-		// initializes mutex for clipboard fd
-		pthread_mutex_t mutex;
-
-		if( pthread_mutex_init(&mutex, NULL) != 0) {
-    		perror("Error initiating mutex");
-  		}
-		
-		add(newfd, thread_clips_id, &mutex, list_clips);
-		
 		// MUTEX UNLOCK
 		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
 			perror("Error unlocking a mutex of clips in thread_clips");
 		}
-		
+		*/
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
 		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
 	}
@@ -154,23 +145,44 @@ void * thread_clips(void * data) {
 	// auxiliar variables
 	int region = -1;
 	int len_message = -1;
+	int error_check = -1;
+	// to close the fd in case of need
+	int error_fd = -1;
 
 	printf("Started a thread to listen to this connection!\n");
 
-	memset(information, '\0', sizeof(information));
-
 	while(1) {
+
+		region = -1;
+		len_message = -1;
+		memset(information, '\0', 15);
+		//printf("fd value = %d\n", fd);
 		//para a este fd nao ha dois writes ou reads em threads diferentes em simultaneo
 		//pode haver um read aqui e um write na thread ligada ao pai mas como é duplex n ha stress
-		if(readRoutine(fd, information, sizeof(information)) == 0) { 
-			printf("client disconnected, read is 0\n");
+		if((error_check = readRoutine(fd, information, sizeof(information))) == 0) { 
+			printf("client disconnected in first readRoutine of thread_clips\n");
+			break;
+		}else if(error_check == -1) {
+			printf("Error readRoutine in thread_clips.\n");
 			break;
 		}
+
+
 		// Its a request of the type copy
 		if (information[0] == 'k') {
 			// sends content from all its regions
 			sendBackup(fd);
 
+			pthread_mutex_t mutex;
+
+			if( pthread_mutex_init(&mutex, NULL) != 0) {
+	    		perror("Error initiating mutex");
+	  		}
+
+	  		pthread_t myvalue = pthread_self();
+
+			add(fd, &myvalue, &mutex, list_clips);
+			
 		// received a message from children
 		} else if (information[0] == 'n') {
 
@@ -198,9 +210,10 @@ void * thread_clips(void * data) {
 
 				// saves region
 				regions[region] = (char*) realloc(regions[region], len_message);
+				memset(regions[region], '\0', len_message);
 
 				if(readRoutine(fd, regions[region], len_message) == 0) { 
-					printf("client disconnected, read is 0\n");
+					printf("client disconnected in thread_clips, read is 0\n");
 
 					// MUTEX UNLOCK - WRITELOCK
 					pthread_rwlock_unlock(&regions_rwlock[region]);
@@ -234,7 +247,7 @@ void * thread_clips(void * data) {
 				char *aux_buffer = (char*) mymalloc(sizeof(char)*len_message);
 
 				if(readRoutine(fd, aux_buffer, len_message) == 0) { 
-					printf("client disconnected, read is 0\n");
+					printf("client disconnected in thread_clips, read is 0\n");
 					free(aux_buffer);
 					break;
 				}		
@@ -244,6 +257,7 @@ void * thread_clips(void * data) {
 					printf("Error writing in thread_clips, sendToParent\n");
 
 					// TODO ver se é preciso dar continue e limpar as variaveis
+					
 				}
 
 				free(aux_buffer);
@@ -272,9 +286,10 @@ void * thread_clips(void * data) {
 
 			// saves region
 			regions[region] = (char*) realloc(regions[region], len_message);
+			memset(regions[region], '\0', len_message);
 
 			if(readRoutine(fd, regions[region], len_message) == 0) { 
-				printf("client disconnected, read is 0\n");
+				printf("client disconnected in thread_clips, read is 0\n");
 
 				// MUTEX UNLOCK - WRITELOCK
 				pthread_rwlock_unlock(&regions_rwlock[region]);
@@ -285,7 +300,7 @@ void * thread_clips(void * data) {
 			regions_length[region] = len_message;
 
 			// propagates the message to its children
-			if(sendToChildren(regions[region], region, len_message) == -1){
+			if((error_fd = sendToChildren(regions[region], region, len_message)) != 0){
 				printf("Error writing in thread_clips\n");
 
 				// TODO ver se é preciso dar continue e limpar as variaveis
@@ -299,24 +314,6 @@ void * thread_clips(void * data) {
 			
 
 		}
-
-		// ver qual o tipo da mensagem
-
-		// se k -> pedido BackUp
-		// invocar função para dar write de todas as suas regiões check
-
-		// se n -> ver se é single ou connected
-		// se single, guardar e enviar para os filhos check
-		// se connected, enviar para o pai check
-
-		// se m -> atualização vinda do pai
-		// atualizar a região check
-		// enviar para os filhos check
-		// conditional variable para o wait <-------
-
-		region = -1;
-		len_message = -1;
-		memset(information, '\0', sizeof(information));
 	}
 	
 	// depois de sair do ciclo while (quando a conexão morrer) verificar se o fd é o do pai ou não
@@ -346,6 +343,8 @@ void * thread_clips(void * data) {
 
 	close(fd);
 
+	pthread_detach(pthread_self());
+
 	pthread_exit(NULL);
 
 	return NULL;
@@ -362,7 +361,7 @@ void * thread_apps(void * data) {
 	while(1) {
 
 		if(readRoutine(fd, information, sizeof(information)) == 0) { 
-			printf("client disconnected, read is 0\n");
+			printf("app disconnected in first readRoutine of thread_apps, read is 0\n");
 			break;
 		} 
 
@@ -410,6 +409,8 @@ void * thread_apps(void * data) {
 	// then close it
 	close(fd);
 
+	pthread_detach(pthread_self());
+
 	pthread_exit(NULL);
 	
 	return NULL;
@@ -431,8 +432,10 @@ void * thread_stdin(void * data) {
 		sscanf(bufstdin, "%[^\n]", message);
 		printf("received stdin: %s\n", message);	
 		
-		if(strcmp(message,"exit")==0) 
+		if(strcmp(message,"exit")==0) {
+
 			pthread_exit(NULL);
+		}
 
 		if(strcmp(message,"print")==0) { //se tiver \0 no meio, prolly dont funciona
 
@@ -446,6 +449,8 @@ void * thread_stdin(void * data) {
 
 				if(regions[i] != NULL) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
+				} else {
+					printf("Tamanho %d, Region %d:\n", (int)regions_length[i], i);
 				}
 
 				// MUTEX UNLOCK
@@ -492,6 +497,8 @@ void * thread_stdin(void * data) {
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));
 	}
+
+	pthread_detach(pthread_self());
 
 	pthread_exit(NULL);
 }

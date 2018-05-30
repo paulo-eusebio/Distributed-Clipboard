@@ -9,9 +9,22 @@ void * mymalloc(int size){
 	return node;
 }
 
+void sigPipe() {
+	void (*old_handler)(int);
+		if( (old_handler = signal(SIGPIPE, SIG_IGN)) == SIG_ERR) {
+			printf("Houve um conflito a ignorar os sinais SIGPIPEs\n");
+			exit(1);
+		}
+}
+
 
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
+
+	// Free resources
+	pthread_detach(thread_app_listen_id);
+	pthread_detach(thread_clip_id);
+	pthread_detach(stdin_thread);
 
 	freeClipboard();
 
@@ -100,6 +113,9 @@ void getBackup(int fd) {
 
 		// that specific region doesn't have content, so there's no content to be sent afterward
 		if (len_message == 0) {
+			memset(information, '\0', sizeof(information));
+			region = -1;
+			len_message = -1;
 			continue;
 		}
 
@@ -186,7 +202,8 @@ int writeRoutine(int fd, char *buffer, size_t length) {
  * until it reads the all "length" that is supposed*/
 int readRoutine(int fd, char *storageBuf, size_t length){
 	int nstore=0,nread=0,nleft=length;
-	char *readBuf = storageBuf;
+	char *readBuf = NULL;
+	readBuf = storageBuf;
 	while(nleft>0){
 		nread=read(fd,readBuf,nleft);		
 		nstore += nread;
@@ -216,34 +233,9 @@ void freeClipboard() {
 
 	unlink(SOCK_ADDRESS);
 
-	// Closes all file descriptors in use
-	/*if(list_clips->head != NULL) {
-		Node *aux = list_clips->head;
-		while(aux->next != NULL){
-			if(close(aux->fd)) {
-				perror("Closing TCP file descriptor");
-			}
-			
-			aux = aux->next;
-		}
-		if(close(aux->fd)) {
-			perror("Closing TCP file descriptor");
-		}
-	}
-
-	if(list_apps->head != NULL) {
-		Node *aux = list_apps->head;
-		while(aux->next != NULL){
-			if(close(aux->fd)) {
-				perror("Closing UNIX file descriptor");
-			}
-
-			aux = aux->next;
-		}
-		if(close(aux->fd)) {
-			perror("Closing UNIX file descriptor");
-		}
-	}*/
+	pthread_cancel(thread_app_listen_id);
+	pthread_cancel(thread_clip_id);
+	pthread_cancel(stdin_thread);
 
 	// free memory of re	gions
 	for (int i = 0; i < 10; ++i) {
@@ -262,7 +254,7 @@ void freeClipboard() {
 	}
 
 	if( pthread_mutex_destroy(&list_apps->list_mutex) != 0) {
-		perror("Error while destroying mutex of clips list");
+		perror("Error while destroying mutex of apps list");
 	}
 	
 	if(fd_parent != -1) {
@@ -301,7 +293,7 @@ void dealCopyRequests(int fd, char information[15]) {
 	char *receive = (char*)mymalloc(sizeof(char)*len_message);
 
 	if((error_check =readRoutine(fd, receive, len_message)) == 0) { 
-		printf("client disconnected, read is 0\n");
+		printf("app disconnected in readRoutine of dealCopyRequests, read is 0\n");
 		free(receive);
 		return;
 	} else if (error_check == -1) {
@@ -558,6 +550,7 @@ void dealWaitRequests(int fd, char information[15]) {
 *
 * Iterates through the lists of fds of children and send the information about the region
 *
+* returns -1 if the operations were correct and the fd if not
 */
 int sendToChildren(char *message, int region, int len_message) {
 
@@ -592,7 +585,14 @@ int sendToChildren(char *message, int region, int len_message) {
 			if( pthread_mutex_unlock(aux->mutex) != 0) {
 				perror("Error unlocking a mutex in sendToChildren");
 			}
-			return -1;
+
+			if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+				perror("Error unlocking a mutex of clips in sendToChildren");
+			}
+
+			// if there was an error while writing to a guy then no need to write again
+			aux = aux->next;
+			continue;
 		}
 
 		// sends the info for the child clipboard to save in that region
@@ -602,7 +602,13 @@ int sendToChildren(char *message, int region, int len_message) {
 			if( pthread_mutex_unlock(aux->mutex) != 0) {
 				perror("Error unlocking a mutex in sendToChildren");
 			}
-			return -1;
+
+			if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
+				perror("Error unlocking a mutex of clips in sendToChildren");
+			}
+
+			aux = aux->next;
+			continue;
 		}
 
 		// MUTEX UNLOCK - LOCK do fd <---- Desnecessário
@@ -689,23 +695,7 @@ void sendBackup(int fd) {
 	
 	memset(information, '\0', sizeof(information));
 
-	//  MUTEX - MUTEX DA CLIPSLIST
-	if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
-		perror("Error locking a mutex of clips in sendBackup");
-	}
 
-	pthread_mutex_t *mutex = getNodeMutex(fd, list_clips);
-	
-	//  MUTEX UNLOCK - MUTEX DA CLIPSLIST
-	if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
-		perror("Error unlocking a mutex of clips in sendBackup");
-	}
-	
-	// MUTEX - LOCK deste fd
-	if( pthread_mutex_lock(mutex) != 0) {
-		perror("Error locking a mutex in sendBackup");
-	}
-	
 	for(int i = 0; i < NUM_REG; i++) {
 
 		// MUTEX - READLOCK
@@ -718,27 +708,26 @@ void sendBackup(int fd) {
 		// não damos unlock aqui porque não queremos arriscar enviar uma região de tamanho diferente
 		// ao combinado na mensagem de aviso
 
-
-
 		if(writeRoutine(fd, information, sizeof(information)) == -1) {
 			printf("Error returned in writeRoutine of sendBackup\n");
-			if( pthread_mutex_unlock(mutex) != 0) {
-				perror("Error unlocking a mutex in sendBackup");
+			
+			if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
+				perror("Error unlocking rwlock in sendBackup");
 			}
+
 			return;
 		}
 
 		if(regions_length[i] != 0) {
 			if(writeRoutine(fd, regions[i], regions_length[i]) == -1 ) {
 				printf("Error returned in writeRoutine of sendBackup\n");
-				if( pthread_mutex_unlock(mutex) != 0) {
-					perror("Error unlocking a mutex in sendBackup");
+				
+				if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
+					perror("Error unlocking rwlock in sendBackup");
 				}
 				return;
 			}
 		}
-
-		
 
 		// UNLOCK - READLOCK
 		if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
@@ -747,10 +736,8 @@ void sendBackup(int fd) {
 		
 		memset(information, '\0', sizeof(information));
 	}
-	// MUTEX UNLOCK deste fd
-		if( pthread_mutex_unlock(mutex) != 0) {
-			perror("Error unlocking a mutex in sendBackup");
-		}
+
+
 	return;
 }
 

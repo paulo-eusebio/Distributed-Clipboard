@@ -25,6 +25,11 @@
 
 /*** GLOBAL VARIABLES ***/
 
+// Threads Declaration
+pthread_t thread_app_listen_id;
+pthread_t thread_clip_id;
+pthread_t stdin_thread;
+
 // matrix for our regions
 char **regions;
 
