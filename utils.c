@@ -337,6 +337,10 @@ void dealCopyRequests(int fd, char information[15]) {
 		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0){
 			perror("Error doing unlock in dealCopyRequests\n");
 		}
+		if(pthread_cond_broadcast(&wait_regions[region]) != 0) {
+			perror("error broadcasting conditional var\n");
+		}
+			
 
 	} else {
 
