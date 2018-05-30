@@ -114,16 +114,6 @@ void * thread_clips_listen(void * data) {
 		// Threads Variables
 		pthread_t thread_clips_id;
 
-		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
-		// MUTEX LOCK - MUTEXCLIPSLIST
-		if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
-			perror("Error locking a mutex of clips in thread_clips");
-		}
-
-		// MUTEX UNLOCK
-		if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
-			perror("Error unlocking a mutex of clips in thread_clips");
-		}
 		
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
 		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
