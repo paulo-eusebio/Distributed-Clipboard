@@ -62,8 +62,11 @@ void * thread_app_listen(void * data){
 			perror("Error unlocking a mutex of apps in thread_app_listen");
 		}
 		
+		int *i = (int*)malloc(sizeof(fd_connect));
+		*i = fd_connect;
+		
 		// thread to interact with the newly connected app
-		if(pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect) != 0) {
+		if(pthread_create(&thread_apps_id, NULL, thread_apps, i) != 0) {
 			perror("Error creating a thread app listen");
 		}
 			
@@ -137,9 +140,12 @@ void * thread_clips_listen(void * data) {
 
 		// Threads Variables
 		pthread_t thread_clips_id;
+		
+		int *i = (int*)malloc(sizeof(newfd));
+		*i = newfd;
 
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
-		if(pthread_create(&thread_clips_id, NULL, thread_clips, &newfd) != 1) {
+		if(pthread_create(&thread_clips_id, NULL, thread_clips, i) != 0) {
 			perror("Error creating a thread clip listen");
 		}
 	}

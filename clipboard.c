@@ -1,9 +1,27 @@
 #include "library.h"
 
-// where the magic happen
+/*****************************************************************************/
+/*              		   Programação de Sistemas  				         */
+/*					 		Distributed Clipboard 							 */
+/*                      Paulo Eusébio & Renato Henriques                     */
+/*								  Junho 2018  								 */
+/*****************************************************************************/
+
+
+/******************************************************************************
+ * Clipboard:																  *
+ * 																			  *
+ * Programa que recebe e guarda mensagens de uma aplicação a ele conectada,   *
+ * consegue guardar até 10 mensagens distinas, uma por cada uma das 10 regiões*
+ * que contem																  *
+ * 																			  *
+ * Pode pertencer a uma rede de clipboards e caso pertença, sincroniza-se com *
+ * essa rede																  *
+ * ***************************************************************************/
+
 int main(int argc, char const *argv[]) {
 
-	sigPipe();
+	sigPipe(); // to ignore SIGPIPE
 
 	// initialization at -1 (parentless)
 	fd_parent = -1;
@@ -42,10 +60,13 @@ int main(int argc, char const *argv[]) {
 	list_apps = emptylist();
 
 	unlink(SOCK_ADDRESS);
-
+	
+	//ctrl_c handler
 	signal(SIGINT, ctrl_c_callback_handler);
 
-	pthread_create(&stdin_thread, NULL, thread_stdin, NULL); 
+	if(pthread_create(&stdin_thread, NULL, thread_stdin, NULL) != 0) {
+		perror("error creating stdin thread in main");
+	}
 
 	// in the case of the clipboard being type connected then with needs to connect
 	// to the received IP and Port and request its region
@@ -54,13 +75,19 @@ int main(int argc, char const *argv[]) {
 	}
 
 	// thread for listening to apps that want to connect to the clipboard
-	pthread_create(&thread_app_listen_id, NULL, thread_app_listen, NULL);
+	if(pthread_create(&thread_app_listen_id, NULL, thread_app_listen, NULL) != 0) {
+		perror("Error creating thread to listen apps in main");
+	}
 	
 	// thread for listening to another clipboards that want to connect to this clipboard
-	pthread_create(&thread_clip_id, NULL, thread_clips_listen, NULL); 
+	if(pthread_create(&thread_clip_id, NULL, thread_clips_listen, NULL) != 0) {
+		perror("Error creating thread to listen clips in main");
+	}
 
-	//pthread_join(thread_clip_id, NULL);
-	pthread_join(stdin_thread, NULL);
+	// Caso a thread stdin seja encerrada, significa que o utilizador pediu para encerrar o programa
+	if(pthread_join(stdin_thread, NULL) != 0) {
+		perror("Error joining stdin thread in main");
+	}
 	printf("Turning off\n");
 	freeClipboard();
 
@@ -72,7 +99,16 @@ int main(int argc, char const *argv[]) {
 	return(0);
 }
 
-
+/**********************************************************************
+ * 
+ * Se o clipboard for iniciado em modo connected, 
+ * estabele a ligação AF INET ao clipboard clipboard desejado (pai)
+ * e pede de imediato o conteúdo de todas as regiões
+ * 
+ * De seguida cria uma thread para lidar especificamente com essa ligação
+ * 
+ * args: endereço ip e porto do clipboard ao qual se vai conectar
+ * *********************************************************************/
 
 void getClipboardBackUp(char const *argv[]) {
 
@@ -112,12 +148,14 @@ void getClipboardBackUp(char const *argv[]) {
 	}
 
 	// fills the regions with the content from a connected clipboard
-	
 	getBackup(fd_client);
+	
 	int *i = (int*)malloc(sizeof(fd_client));
 	*i = fd_client;
 	// Thread for listening to reads from this file descriptor
-	pthread_create(&thread_id, NULL, thread_clips, i); 
+	if(pthread_create(&thread_id, NULL, thread_clips, i) != 0) {
+		perror("error creating a thread for father in getClipboardBackup");
+	}
 
 	return;
 }

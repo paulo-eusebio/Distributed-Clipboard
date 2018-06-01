@@ -80,10 +80,22 @@ void setSockaddrIP( struct sockaddr_in * server, socklen_t *addrlen, struct in_a
 }
 
 
-/*
-* For getting the content of the server the clipboard connects to
-* 
- */
+/********************************************************
+ * Esta função é invocada quando um clipboard 
+ * é inicializado em modo connected.
+ * 
+ * Envia uma mensagem com label k, de seguida 
+ * espera que o clipboard remoto lhe envie 20 
+ * mensagens (um par por região) para atualizar 
+ * a sua base de dados.
+ * 
+ * Cada par de mensagens é constituido por uma 
+ * mensagem de informação do tipo "label regiao tamanho"
+ * e a 2a mensagem é o conteudo efectivo da região
+ * 
+ * arg: file discritpor do clipboard ao qual se conectou
+ * *******************************************************/
+ 
 void getBackup(int fd) {
 	
 	char request[15] = "k";
@@ -103,7 +115,7 @@ void getBackup(int fd) {
 
 	for (int i = 0; i < NUM_REG; i++) {
 
-		// expected to receive "n region size", with a maximum of 15 characters
+		// expected to receive "m region size", with a maximum of 15 characters
 		if((error_check = readRoutine(fd, information, sizeof(information))) == 0) {
 			printf("Client disconnected, ending getBackup\n");
 			return;
@@ -124,7 +136,7 @@ void getBackup(int fd) {
 			continue;
 		}
 
-		// that specific region doesn't have content, so there's no content to be sent afterward
+		// that specific region doesn't have content, so there's no content to receive, skip to next region
 		if (len_message == 0) {
 			memset(information, '\0', sizeof(information));
 			region = -1;
@@ -195,9 +207,6 @@ int writeRoutine(int fd, char *buffer, size_t length) {
 	while(nleft>0){
 
 		nwritten=write(fd,ptr,nleft);		
-		/*if(errno == EPIPE && nwritten == -1){ devemos de usar isto para quando um clip da discnect
-			printf("servidor de mensagens disconectou\n");
-			return -1;*/
 		if(nwritten <= 0){
 			printf("Error occured in writeRoutine\n");
 			return -1;
@@ -247,11 +256,7 @@ void freeClipboard() {
 
 	unlink(SOCK_ADDRESS);
 
-	pthread_cancel(thread_app_listen_id);
-	pthread_cancel(thread_clip_id);
-	pthread_cancel(stdin_thread);
-
-	// free memory of re	gions
+	// free memory of regions
 	for (int i = 0; i < 10; ++i) {
 	    free(regions[i]);
 
@@ -272,10 +277,22 @@ void freeClipboard() {
 
 
 
-/*
-*
-*
-*/
+/****************************************************************
+ * 
+ * Função invocada quando uma app faz um copy request
+ * 
+ * Quando é recebido um pedido copy, caso se seja um clipboard 
+ * em modo single, guarda-se a mensagem e replica-se para todos 
+ * os filhos com label "m" e guarda-se
+ * 
+ * Caso se seja um clipboard em modo connected, envia-se para 
+ * o pai com label "n"
+ * 
+ * 
+ * args: app file discirptor
+ * 		 mensagem de info enviada pela API
+ * 
+ ***************************************************************/ 
 void dealCopyRequests(int fd, char information[15]) {
 
 	int region = -1;
@@ -362,10 +379,31 @@ void dealCopyRequests(int fd, char information[15]) {
 
 
 
-/*
-*
-*
-*/
+/*****************************************************
+ * 
+ * Função invocada quando uma app faz um paste request
+ * 
+ * Quando é recebido um pedido paste, envia-se uma 
+ * mensagem de volta para a API a informar o tamanho da
+ * mensagem que está nessa região, caso essa região nao 
+ * esteja preenchida, o valor tem tamanho 0, e a API 
+ * sabe que não virá nenhuma mensagem
+ * 
+ * Caso o paste peça um numero de bytes superior ao nº
+ * de bytes da mensagem, é-lhe enviado a mensagem completa
+ * daí a necessidade de enviar previamente o tamanho real 
+ * da mensagem
+ * 
+ * caso o paste peça um numero de bytes inferiror ou igual
+ * ao nº real, é-lhe enviado o nº pedido
+ * 
+ * A label no envio de mensagens de resposta a um paste é "a"
+ * 
+ * 
+ * args: app file discirptor
+ * 		 mensagem de info enviada pela API
+ * 
+ ***************************************************************/ 
 void dealPasteRequests(int fd, char information[15]) {
 
 	int region = -1;
@@ -454,6 +492,22 @@ void dealPasteRequests(int fd, char information[15]) {
 	return;
 }
 
+
+/**********************************************************
+ * Função que lida com pedidos de wait
+ * 
+ * Bloqueia numa variavel condicional até receber um signal
+ * 
+ * Quando recebe, envia um par de mensagens, a 1a informa 
+ * o tamanho da mensagem com label "a", a 2a é a 
+ * mensagem 
+ * 
+  * args: app file discirptor
+ * 		 mensagem de info enviada pela API
+ * 
+ **********************************************************/ 
+
+
 void dealWaitRequests(int fd, char information[15]) {
 
 	int region = -1;
@@ -492,7 +546,9 @@ void dealWaitRequests(int fd, char information[15]) {
 			printf("Error writing in dealWaitRequests\n");
 
 			// MUTEx UNLOCK
-			pthread_rwlock_unlock(&regions_rwlock[region]);
+			if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0) {
+				perror("Error unlocking muex at dealWait");
+			}
 
 			return;
 		}
@@ -553,8 +609,11 @@ void dealWaitRequests(int fd, char information[15]) {
 /*
 *
 * Iterates through the lists of fds of children and send the information about the region
+* 
+* followed by the actual message, with label "m"
+* 
+* Label "m", means that the children will save the message
 *
-* returns -1 if the operations were correct and the fd if not
 */
 int sendToChildren(char *message, int region, int len_message) {
 
@@ -615,7 +674,7 @@ int sendToChildren(char *message, int region, int len_message) {
 			continue;
 		}
 
-		// MUTEX UNLOCK - LOCK do fd <---- Desnecessário
+		// MUTEX UNLOCK - LOCK do fd
 		if( pthread_mutex_unlock(aux->mutex) != 0) {
 			perror("Error unlocking a mutex in sendToChildren");
 		}
@@ -639,7 +698,10 @@ int sendToChildren(char *message, int region, int len_message) {
 /*
 *
 * Send the information about the region to the Parent clipboard
-*
+* 
+* First the information about the message, then the actual message
+* 
+* With label "n", means that the message will go upstream
 * 
 */
 int sendToParent(char *message, int region, int len_message) {
@@ -692,6 +754,19 @@ int sendToParent(char *message, int region, int len_message) {
 	// send complete
 	return 0;
 }
+
+
+/******************************************************
+ * Funciona que envia todo os conteudo das regioes
+ * quando pedido por um clipboard ligado a mim
+ * 
+ * Envia um par de mensagens, 1o com a informação 
+ * de cada mensagem (tamnho, regiao), seguido 
+ * da verdadeira mensagem, com label "m", 
+ * que significa que quem recebe irá guarda a mensagem
+ * 
+ * args: file discriptor do clibpboard conectado a mim
+ * *****************************************************/
 
 void sendBackup(int fd) {
 	

@@ -1,18 +1,29 @@
 #include "clipboard.h"
 
+
+/************************************************
+ * 
+ * Conecta aplicação ao clipboard por AF UNIX
+ * com base no ficheiro definido em sock_stream.h
+ * 
+ ************************************************/
+
 int clipboard_connect(char *clipboard_dir){
 	
 	struct sockaddr_un server_addr;
 	int sock_fd = -1;
 	
+	//creates socket
 	if( (sock_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		perror("socket: ");
 		exit(-1);
 	}
-
+	
+	//defines socket structure
 	server_addr.sun_family = AF_UNIX;
 	strcpy(server_addr.sun_path, clipboard_dir);
 
+	//tries to connect to clipboard
 	int err_c = connect(sock_fd, (const struct sockaddr *) &server_addr, sizeof(server_addr));
 	if(err_c==-1){
 		printf("Error connecting\n");
@@ -23,6 +34,20 @@ int clipboard_connect(char *clipboard_dir){
 
 	return sock_fd;
 }
+
+/**********************************************************************
+ * 
+ * Protocolo copy:
+ * 
+ * Envia uma mensagem para o clipboard com informação acerca do pedido
+ * "tipo regiao tamanho", tipo "c" corresponde a um copy para a regiao
+ * pedida com o tamanho da mensagem
+ * 
+ * De seguida envia o conteudo da mensagem
+ * 
+ * Return: nº bytes copiados, 0 em erro
+ * *********************************************************************/
+
 
 int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
@@ -63,6 +88,24 @@ int clipboard_copy(int clipboard_id, int region, void *buf, size_t count) {
 
 	return total;
 }
+
+/**********************************************************************
+ * 
+ * Protocolo paste:
+ * 
+ * Envia uma mensagem para o clipboard com informação acerca do pedido
+ * "tipo regiao tamanho", tipo "p" corresponde a um paste para a regiao
+ * pedida com o numero de bytes requirido
+ * 
+ * De seguida bloqueia À espera de uma resposta, com informação da mensagem
+ * que virá, caso seja de tamanho 0, sabe que a região está vazia, caso
+ * contrário prepara para ler o numero de bytes respondido, que será 
+ * o diferente do pedido, caso a mensagem tenha tamanho real inferior ao
+ * pedido
+ * 
+ * Return: nº bytes recebidos, 0 em erro
+ * *********************************************************************/
+
 
 int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	
@@ -141,7 +184,10 @@ int clipboard_paste(int clipboard_id, int region, void *buf, size_t count) {
 	return total;
 }
 
-/// This function closes the connection between the application and the local clipboard
+/***************************************************************
+ * Envia mensagem ao clipboard a avisar que irá encerrar conexão
+ * 
+ * *************************************************************/
 void clipboard_close(int clipboard_id) {
 
 	char message[15] = "s";
@@ -159,6 +205,23 @@ void clipboard_close(int clipboard_id) {
 
 	return;
 }
+
+/**********************************************************************
+ * 
+ * Protocolo wait:
+ * 
+ * Envia uma mensagem para o clipboard com informação acerca do pedido
+ * "tipo regiao tamanho", tipo "w" corresponde a um wait para a regiao
+ * pedida com o numero de bytes requirido
+ * 
+ * De seguida bloqueia À espera de uma resposta, com informação da mensagem
+ * que virá e bloqueia novamente para ler a mensagem até ao 
+ * numero de bytes respondido, assim que o clipboard receber uma atualização
+ * 
+ * Return: nº bytes recebidos, 0 em erro
+ * *********************************************************************/
+
+
 
 int clipboard_wait(int clipboard_id, int region, void *buf, size_t count) {
 
