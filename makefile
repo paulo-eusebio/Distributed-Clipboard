@@ -7,6 +7,9 @@ all: appteste appfiles clipboard app3
 appteste: app_teste.c library.c utils.c linkedList.c
 	gcc app_teste.c library.c utils.c linkedList.c -o appteste $(CFLAGS)
 
+appteste3: app_teste3.c library.c utils.c linkedList.c
+	gcc app_teste3.c library.c utils.c linkedList.c -o appteste3 $(CFLAGS)
+
 appfiles: app_files.c library.c utils.c linkedList.c
 	gcc app_files.c library.c utils.c linkedList.c -o appfiles $(CFLAGS)
 

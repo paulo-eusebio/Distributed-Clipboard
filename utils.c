@@ -175,6 +175,7 @@ void getBackup(int fd) {
  * and advances according to the number of bytes that was able to write
  * until it reaches the end of the buffer (size length) */
 int writeRoutine(int fd, char *buffer, size_t length) {
+
 	int nleft = length, nwritten = 0, total=0;
 	char *ptr = buffer;
 
@@ -241,27 +242,27 @@ void freeClipboard() {
 	for (int i = 0; i < 10; ++i) {
 	    free(regions[i]);
 
-	    if(pthread_rwlock_destroy(&regions_rwlock[i]) != 0){
+	    /*if(pthread_rwlock_destroy(&regions_rwlock[i]) != 0){
 	    	perror("Error while destroying a mutex of a region");
-	    }
-	   
+	    }*/   
 	}
+
 	free(regions);
 
 	// destroying mutexes of lists
-	if( pthread_mutex_destroy(&list_clips->list_mutex) != 0) {
+	/*if( pthread_mutex_destroy(&list_clips->list_mutex) != 0) {
 		perror("Error while destroying mutex of clips list");
 	}
 
 	if( pthread_mutex_destroy(&list_apps->list_mutex) != 0) {
-		perror("Error while destroying mutex of clips list");
-	}
+		perror("Error while destroying mutex of apps list");
+	}*/
 	
 	if(fd_parent != -1) {
 		close(fd_parent);
-		if( pthread_mutex_destroy(&parent_socket_lock) != 0) {
+		/*if( pthread_mutex_destroy(&parent_socket_lock) != 0) {
 			perror("Error while destroying fd parent");
-		}
+		}*/
 	}
 
 	// Freeing lists
@@ -337,6 +338,11 @@ void dealCopyRequests(int fd, char information[15]) {
 		if(pthread_rwlock_unlock(&regions_rwlock[region]) != 0){
 			perror("Error doing unlock in dealCopyRequests\n");
 		}
+
+		if(pthread_cond_broadcast(&wait_regions[region]) != 0) {
+			perror("error broadcasting conditional var\n");
+		}
+			
 
 	} else {
 
@@ -569,14 +575,14 @@ int sendToChildren(char *message, int region, int len_message) {
 	}
 		
 	Node *aux = list_clips->head;
-
+	
 	while (aux != NULL) {
 
 		// MUTEX - LOCK do fd
 		if( pthread_mutex_lock(aux->mutex) != 0) {
 			perror("Error locking a mutex in sendToChildren");
 		}
-
+		
 		// sets up the clipboard for be ready to receive a message of a certain size 
 		// to insert inside a certain region
 		if(writeRoutine(aux->fd, information, (size_t) sizeof(information)) == -1) {
@@ -695,22 +701,6 @@ void sendBackup(int fd) {
 	
 	memset(information, '\0', sizeof(information));
 
-	//  MUTEX - MUTEX DA CLIPSLIST
-	/*if( pthread_mutex_lock(&list_clips->list_mutex) != 0) {
-		perror("Error locking a mutex of clips in sendBackup");
-	}
-
-	pthread_mutex_t *mutex = getNodeMutex(fd, list_clips);
-
-	//  MUTEX UNLOCK - MUTEX DA CLIPSLIST
-	if( pthread_mutex_unlock(&list_clips->list_mutex) != 0) {
-		perror("Error unlocking a mutex of clips in sendBackup");
-	}
-
-	// MUTEX - LOCK deste fd
-	if( pthread_mutex_lock(mutex) != 0) {
-		perror("Error locking a mutex in sendBackup");
-	}*/
 
 	for(int i = 0; i < NUM_REG; i++) {
 
@@ -726,10 +716,7 @@ void sendBackup(int fd) {
 
 		if(writeRoutine(fd, information, sizeof(information)) == -1) {
 			printf("Error returned in writeRoutine of sendBackup\n");
-			/*if( pthread_mutex_unlock(mutex) != 0) {
-				perror("Error unlocking a mutex in sendBackup");
-			}*/
-
+			
 			if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
 				perror("Error unlocking rwlock in sendBackup");
 			}
@@ -740,10 +727,7 @@ void sendBackup(int fd) {
 		if(regions_length[i] != 0) {
 			if(writeRoutine(fd, regions[i], regions_length[i]) == -1 ) {
 				printf("Error returned in writeRoutine of sendBackup\n");
-				/*if( pthread_mutex_unlock(mutex) != 0) {
-					perror("Error unlocking a mutex in sendBackup");
-				}*/
-
+				
 				if(pthread_rwlock_unlock(&regions_rwlock[i]) != 0){
 					perror("Error unlocking rwlock in sendBackup");
 				}
@@ -759,10 +743,6 @@ void sendBackup(int fd) {
 		memset(information, '\0', sizeof(information));
 	}
 
-	// MUTEX UNLOCK deste fd
-	/*if( pthread_mutex_unlock(mutex) != 0) {
-		perror("Error unlocking a mutex in sendBackup");
-	}*/
 
 	return;
 }

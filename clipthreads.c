@@ -114,7 +114,6 @@ void * thread_clips_listen(void * data) {
 		// Threads Variables
 		pthread_t thread_clips_id;
 
-		
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
 		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
 	}
@@ -146,7 +145,7 @@ void * thread_clips(void * data) {
 		region = -1;
 		len_message = -1;
 		memset(information, '\0', 15);
-
+		//printf("fd value = %d\n", fd);
 		//para a este fd nao ha dois writes ou reads em threads diferentes em simultaneo
 		//pode haver um read aqui e um write na thread ligada ao pai mas como é duplex n ha stress
 		if((error_check = readRoutine(fd, information, sizeof(information))) == 0) { 
@@ -290,7 +289,7 @@ void * thread_clips(void * data) {
 			regions_length[region] = len_message;
 
 			// propagates the message to its children
-			if((error_fd = sendToChildren(regions[region], region, len_message)) != -1){
+			if((error_fd = sendToChildren(regions[region], region, len_message)) != 0){
 				printf("Error writing in thread_clips\n");
 
 				// TODO ver se é preciso dar continue e limpar as variaveis
@@ -439,6 +438,8 @@ void * thread_stdin(void * data) {
 
 				if(regions[i] != NULL) {
 					printf("Tamanho %d, Region %d: %s\n", (int)regions_length[i], i, regions[i]);
+				} else {
+					printf("Tamanho %d, Region %d:\n", (int)regions_length[i], i);
 				}
 
 				// MUTEX UNLOCK
@@ -492,4 +493,5 @@ void * thread_stdin(void * data) {
 }
 
 //wait mandar msg ao clipboard e ficar à espera bloqueado no read???
+
 

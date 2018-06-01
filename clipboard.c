@@ -112,10 +112,12 @@ void getClipboardBackUp(char const *argv[]) {
 	}
 
 	// fills the regions with the content from a connected clipboard
+	
 	getBackup(fd_client);
-
+	int *i = (int*)malloc(sizeof(fd_client));
+	*i = fd_client;
 	// Thread for listening to reads from this file descriptor
-	pthread_create(&thread_id, NULL, thread_clips, &fd_client); 
+	pthread_create(&thread_id, NULL, thread_clips, i); 
 
 	return;
 }
