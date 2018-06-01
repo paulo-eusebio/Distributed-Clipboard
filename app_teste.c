@@ -1,5 +1,19 @@
 #include "clipboard.h"
 
+
+/*
+* Aplicação teste para enviar mensagens string de qualquer tamanho.
+* 	
+* ./appteste
+*
+* Funcionamento: 
+* Durante a execução da aplicação é possível escolher para que região
+* se quer enviar o ficheiro e quantos bytes. Da mesma forma é possivel pedir
+* um certo nº de bytes de uma região. Esses bytes lidos serão inseridos num ficheiro 
+* chamado output e com o extensão do ficheiro recebido no argumento.
+* Permite também fazer o wait de uma região.
+*
+*/
 int main(int argc, char const *argv[]) {
 
 	char message[MAX_INPUT] = "";

@@ -1,9 +1,16 @@
 #include "clipboard.h"
 
 /*
-*	
-*
-*
+* Aplicação teste para enviar ficheiros de qualquer tamanho.
+* 	
+* Funcionamento: Meter o ficheiro que se quer enviar no directory
+* do projeto e para correr no terminal ./appfiles name_of_file.
+* 
+* Durante a execução da aplicação é possível escolher para que região
+* se quer enviar o ficheiro e quantos bytes. Da mesma forma é possivel pedir
+* um certo nº de bytes de uma região. Esses bytes lidos serão inseridos num ficheiro 
+* chamado output e com o extensão do ficheiro recebido no argumento.
+* Permite também fazer o wait de uma região.
 *
 */
 
@@ -86,7 +93,6 @@ int main(int argc, char const *argv[]) {
 
 			FILE *outputfile;
 			char outputname[11] = "output";
-			//strcat(outputname, argv[2]);
 			outputfile = fopen(outputname, "w");
 			fwrite(recv_buf, 1, many, outputfile);
 			fclose(outputfile);

@@ -45,8 +45,6 @@ int writeRoutine(int fd, char *buffer, size_t length);
 
 int readRoutine(int fd, char *storageBuf, size_t length);
 
-char* getPasteMessage(int region, char **regions);
-
 int randGenerator(int min, int max);
 
 void freeClipboard();
