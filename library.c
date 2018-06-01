@@ -1,15 +1,4 @@
 #include "clipboard.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include "utils.h"
 
 int clipboard_connect(char *clipboard_dir){
 	
@@ -23,7 +12,7 @@ int clipboard_connect(char *clipboard_dir){
 	}
 
 	client_addr.sun_family = AF_UNIX;
-	sprintf(client_addr.sun_path, "./socket_%d",getpid());
+	sprintf(client_addr.sun_path, "./socket_%d", getpid());
 	int err = bind(sock_fd, (struct sockaddr *)&client_addr, sizeof(client_addr));
 	if(err == -1) {
 		perror("bind");
