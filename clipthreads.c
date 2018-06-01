@@ -428,7 +428,7 @@ void * thread_apps(void * data) {
 	while(1) {
 		//first message is an information about the incoming message
 		if(readRoutine(fd, information, sizeof(information)) == 0) { 
-			printf("app disconnected in first readRoutine of thread_apps, read is 0\n");
+			printf("app disconnected in first readRoutine of thread_apps.\n");
 			break;
 		} 
 

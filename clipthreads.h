@@ -15,7 +15,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
-#include "clipboard.h"
+#include "library.h"
 #include "utils.h"
 #include "sock_stream.h"
 #include "linkedList.h"

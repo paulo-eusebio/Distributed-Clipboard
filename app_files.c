@@ -1,13 +1,11 @@
 #include "clipboard.h"
-#include <sys/types.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 
-#include "utils.h"
+/*
+*	
+*
+*
+*
+*/
 
 int main(int argc, char const *argv[]) {
 
@@ -61,9 +59,7 @@ int main(int argc, char const *argv[]) {
 		
 		if(action == 1) { //copy
 			printf("File going to be sent");
-			/*fgets(message, MAX_INPUT, stdin); //nao usar scanf para sacar strings!! 
-			strtok(message, "\n"); //removes \n, just to be prettier*/
-			
+
 			if(clipboard_copy(clipboard_id, region, sendbuf, result) == 0){
 				fclose(file);
 				close(clipboard_id);

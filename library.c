@@ -1,15 +1,4 @@
 #include "clipboard.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include "utils.h"
 
 int clipboard_connect(char *clipboard_dir){
 	
@@ -20,6 +9,7 @@ int clipboard_connect(char *clipboard_dir){
 		perror("socket: ");
 		exit(-1);
 	}
+
 	server_addr.sun_family = AF_UNIX;
 	strcpy(server_addr.sun_path, clipboard_dir);
 

@@ -135,5 +135,6 @@ void destroy(List * list){
     free(current);
     current = next;
   }
+  
   free(list);
 }

@@ -1,4 +1,4 @@
-#include "clipboard.h"
+#include "library.h"
 
 // where the magic happen
 int main(int argc, char const *argv[]) {

@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "linkedList.h"
 
 
 
@@ -254,27 +255,12 @@ void freeClipboard() {
 	for (int i = 0; i < 10; ++i) {
 	    free(regions[i]);
 
-	    /*if(pthread_rwlock_destroy(&regions_rwlock[i]) != 0){
-	    	perror("Error while destroying a mutex of a region");
-	    }*/   
 	}
 
 	free(regions);
 
-	// destroying mutexes of lists
-	/*if( pthread_mutex_destroy(&list_clips->list_mutex) != 0) {
-		perror("Error while destroying mutex of clips list");
-	}
-
-	if( pthread_mutex_destroy(&list_apps->list_mutex) != 0) {
-		perror("Error while destroying mutex of apps list");
-	}*/
-	
 	if(fd_parent != -1) {
 		close(fd_parent);
-		/*if( pthread_mutex_destroy(&parent_socket_lock) != 0) {
-			perror("Error while destroying fd parent");
-		}*/
 	}
 
 	// Freeing lists
