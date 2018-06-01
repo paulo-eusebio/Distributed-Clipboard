@@ -14,22 +14,12 @@
 int clipboard_connect(char *clipboard_dir){
 	
 	struct sockaddr_un server_addr;
-	struct sockaddr_un client_addr;
 	int sock_fd = -1;
 	
 	if( (sock_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		perror("socket: ");
 		exit(-1);
 	}
-
-	client_addr.sun_family = AF_UNIX;
-	sprintf(client_addr.sun_path, "./socket_%d",getpid());
-	int err = bind(sock_fd, (struct sockaddr *)&client_addr, sizeof(client_addr));
-	if(err == -1) {
-		perror("bind");
-		exit(-1);
-	}
-
 	server_addr.sun_family = AF_UNIX;
 	strcpy(server_addr.sun_path, clipboard_dir);
 

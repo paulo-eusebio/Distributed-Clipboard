@@ -1,5 +1,8 @@
 #include "utils.h"
 
+
+
+//utily function to alloc memory
 void * mymalloc(int size){
 	void * node = (void*)malloc(size);
 	if(node == NULL){
@@ -9,6 +12,8 @@ void * mymalloc(int size){
 	return node;
 }
 
+
+//function to ignore sigpipe
 void sigPipe() {
 	void (*old_handler)(int);
 		if( (old_handler = signal(SIGPIPE, SIG_IGN)) == SIG_ERR) {
@@ -17,14 +22,20 @@ void sigPipe() {
 		}
 }
 
-
+//ctrl-c handler, exits the program peacefully be freeing memory and threads
 void ctrl_c_callback_handler(int signum){
 	printf("Caught signal Ctr-C\n");
 
 	// Free resources
-	pthread_detach(thread_app_listen_id);
-	pthread_detach(thread_clip_id);
-	pthread_detach(stdin_thread);
+	if(pthread_detach(thread_app_listen_id) != 0) {
+		perror("Error detachin in ctrl-c");
+	}
+	if(pthread_detach(thread_clip_id) != 0) {
+		perror("Error detachin in ctrl-c");
+	}
+	if(pthread_detach(stdin_thread) != 0)  {
+		perror("Error detachin in ctrl-c");
+	}
 
 	freeClipboard();
 
@@ -82,7 +93,8 @@ void getBackup(int fd) {
 	int error_check = -2;
 
 	memset(information, '\0', sizeof(information));
-
+	
+	//sends a message to his parent requesting all regions information
 	if( writeRoutine(fd, request, sizeof(request)) == -1) {
 		printf("Error writing in getBackup\n");
 		return;

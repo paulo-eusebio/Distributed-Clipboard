@@ -1,6 +1,17 @@
 #include "clipthreads.h"
 
-/// Thread that receives connections from local applications
+/************************************************************
+ *															* 
+ * Thread que está à espera de conexões de aplicações 		*
+ * via AF_UNIX, assim que uma conexão é feita lança uma		*
+ * thread para lidar especificamente com a aplicação aceite	*
+ * e volta a esperar nova conexão							*
+ * 															*
+ * Também adiciona a nova aplicação a uma lista com todas 	*
+ * as aplicações ligadas a este clipboard					*
+ * 															*
+ * Args: Não utilizado										*
+ * **********************************************************/
 void * thread_app_listen(void * data){
 
 	// UNIX sockets
@@ -35,16 +46,15 @@ void * thread_app_listen(void * data){
 
 		printf("Accepted a new app connection\n");
 		
-		// Threads Variables
+		// Received new connection, creates thread to deal with new app
 		pthread_t thread_apps_id;
-
-		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
 
 		// MUTEX LOCK - MUTEXAPPSLIST
 		if( pthread_mutex_lock(&list_apps->list_mutex) != 0) {
 			perror("Error locking a mutex of apps in thread_app_listen");
 		}
 
+		// Save the fd gotten in the accept operation and thread id that's going to be launched for this connection
 		add(fd_connect, &thread_apps_id, NULL, list_apps);
 
 		// MUTEX UNLOCK - MUTEXAPPSLIST
@@ -53,7 +63,10 @@ void * thread_app_listen(void * data){
 		}
 		
 		// thread to interact with the newly connected app
-		pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect); 
+		if(pthread_create(&thread_apps_id, NULL, thread_apps, &fd_connect) != 0) {
+			perror("Error creating a thread app listen");
+		}
+			
 	}
 	
 	close(fd_listen);
@@ -63,7 +76,17 @@ void * thread_app_listen(void * data){
 	return NULL;
 }
 
-/// Thread for receiving connections from cooperative remote clipboards
+/************************************************************
+ * 															*
+ * Thread que está à espera de conexões de clipboards 		*
+ * via AF:INET, assim que uma conexão é feita lança uma		*
+ * thread para lidar especificamente com o novo clipboard	*
+ * e volta a esperar nova conexão							*
+ * 															*
+ * Args: Não utilizado										*
+ * **********************************************************/
+
+
 void * thread_clips_listen(void * data) {
 
 	// IPv4 Sockets declaration
@@ -103,7 +126,8 @@ void * thread_clips_listen(void * data) {
 	addrlen=sizeof(addr);
 
 	while(1) {
-
+		
+		//waits for a new clipboard connection
 		if((newfd = accept(fd,(struct sockaddr*) &addr, &addrlen)) == -1){
 			perror("Error accepting connections from other clipboards: ");
 			exit(1);
@@ -115,7 +139,9 @@ void * thread_clips_listen(void * data) {
 		pthread_t thread_clips_id;
 
 		// thread for reading and writing to the clipboard that this clipboard just accepted the connection
-		pthread_create(&thread_clips_id, NULL, thread_clips, &newfd); 
+		if(pthread_create(&thread_clips_id, NULL, thread_clips, &newfd) != 1) {
+			perror("Error creating a thread clip listen");
+		}
 	}
 
 	close(fd);
@@ -125,10 +151,42 @@ void * thread_clips_listen(void * data) {
 	return NULL;
 }
 
-/// Thread for dealing with each connected clipboard
+
+/****************************************************************
+ * 																*
+ * Thread lançada para lidar com um clipboard conectado a		*
+ * este clipboard												*
+ * 																*
+ * O protocolo consiste em mensagem com o formato 				*
+ * "label região tamanho", que é guardado na string information	*
+ * 																*
+ * Caso a label seja k, os restantes campos são ignorados		*
+ * significa que o clipboard recentemente						*
+ * contectado pediu toda a informação das regiões. De seguida	*
+ * envia essa informação e adiciona o clipboard à lista de clips*
+ * conectados													*
+ * 																*
+ * Caso a label seja n, é uma replicação de mensagem vinda de um*	
+ * filho, significa que a proxima mensagem dessa socket será a 	*
+ * mensagem a propagar com o tamanho e região informados. 		*
+ * Depois de receber  a mensagem propaga para o pai caso tenha,	*
+ * se não tiver pai, guarda e propaga para todos os filhos		*
+ * 																*
+ * Caso a label seja m, é uma replicação vinda do pai, guardar	*
+ * a mensagem que virá e replica para todos os clipboards filhos*
+ * 
+ * Sempre que uma mensagem é efectivamente guardada na região,	*
+ * broadcasta um signal para todos as threads À espera de uma 	*
+ * atulização dessa região										*
+ * 
+ * Args: fd da conexão a esse clipboard							*
+ * **************************************************************/
+
 void * thread_clips(void * data) {
 
+	//file discriptor
 	int fd = *(int*)data;
+	
 	char information[15] = "";
 
 	// auxiliar variables
@@ -141,13 +199,16 @@ void * thread_clips(void * data) {
 	printf("Started a thread to listen to this connection!\n");
 
 	while(1) {
-
+		
+		//clears vars
 		region = -1;
 		len_message = -1;
 		memset(information, '\0', 15);
-		//printf("fd value = %d\n", fd);
+		
 		//para a este fd nao ha dois writes ou reads em threads diferentes em simultaneo
 		//pode haver um read aqui e um write na thread ligada ao pai mas como é duplex n ha stress
+		
+		//first message received is the length and the region where to save the region
 		if((error_check = readRoutine(fd, information, sizeof(information))) == 0) { 
 			printf("client disconnected in first readRoutine of thread_clips\n");
 			break;
@@ -157,7 +218,7 @@ void * thread_clips(void * data) {
 		}
 
 
-		// Its a request of the type copy
+		// A connected clipboard requested the database content
 		if (information[0] == 'k') {
 			// sends content from all its regions
 			sendBackup(fd);
@@ -169,7 +230,8 @@ void * thread_clips(void * data) {
 	  		}
 
 	  		pthread_t myvalue = pthread_self();
-
+			
+			//only adds clipboard info to the list after updating him
 			add(fd, &myvalue, &mutex, list_clips);
 			
 		// received a message from children
@@ -185,9 +247,8 @@ void * thread_clips(void * data) {
 				continue;
 			}
 
-			// if i'm a single clipboard, don't have a parent
+			// if i'm a single clipboard, don't have a parent, save message
 			if(fd_parent == -1) {
-				// reads into the region
 
 				// MUTEX - WRITELOCK
 				pthread_rwlock_wrlock(&regions_rwlock[region]);
@@ -197,10 +258,11 @@ void * thread_clips(void * data) {
 					memset(regions[region], '\0', regions_length[region]);	
 				}
 
-				// saves region
+				// allocs according to the info received message before
 				regions[region] = (char*) realloc(regions[region], len_message);
 				memset(regions[region], '\0', len_message);
-
+				
+				//reads directly into the region
 				if(readRoutine(fd, regions[region], len_message) == 0) { 
 					printf("client disconnected in thread_clips, read is 0\n");
 
@@ -209,15 +271,13 @@ void * thread_clips(void * data) {
 
 					break;
 				}
-
+				
 				regions_length[region] = len_message;
 
 				// propagates the message to its children
-				// OUTDATED MUTEX - READLOCK porque a app pode querer fazer um paste ao mesmo tempo
 				if(sendToChildren(regions[region], region, len_message) == -1){
 					printf("Error writing in thread_clips, sendToChildren\n");
 
-					// TODO ver se é preciso dar continue e limpar as variaveis
 				}
 
 				// MUTEX UNLOCK - WRITELOCK
@@ -232,7 +292,8 @@ void * thread_clips(void * data) {
 				// reads into an auxiliar variable
 
 				// doesn't save anything, only send to parent
-
+				
+				// allocs according to the first message informatin
 				char *aux_buffer = (char*) mymalloc(sizeof(char)*len_message);
 
 				if(readRoutine(fd, aux_buffer, len_message) == 0) { 
@@ -244,9 +305,6 @@ void * thread_clips(void * data) {
 				// propagates the message to its parent
 				if(sendToParent(aux_buffer, region, len_message) == -1){
 					printf("Error writing in thread_clips, sendToParent\n");
-
-					// TODO ver se é preciso dar continue e limpar as variaveis
-					
 				}
 
 				free(aux_buffer);
@@ -254,7 +312,8 @@ void * thread_clips(void * data) {
 
 		// receive a message from parent
 		} else if (information[0] == 'm') {
-
+			
+			//retrieves information about the incoming message
 			if(sscanf(information, "m %d %d", &region, &len_message) != 2) {
 				printf("sscanf didn't assign the variables correctly\n");
 
@@ -291,8 +350,6 @@ void * thread_clips(void * data) {
 			// propagates the message to its children
 			if((error_fd = sendToChildren(regions[region], region, len_message)) != 0){
 				printf("Error writing in thread_clips\n");
-
-				// TODO ver se é preciso dar continue e limpar as variaveis
 			}
 
 			// MUTEX UNLOCK - WRITELOCK
@@ -332,14 +389,35 @@ void * thread_clips(void * data) {
 
 	close(fd);
 
-	pthread_detach(pthread_self());
+	if(pthread_detach(pthread_self()) != 0) {
+		perror("Error deatching thread in thread_clips");
+	}
+		
 
 	pthread_exit(NULL);
 
 	return NULL;
 }
 
-//function to threads that deal with apps
+/***********************************************************
+ * 
+ * Thread lançada para lidar com uma app conectada a
+ * este clipboard
+ * 
+ * O protocolo consiste em mensagem com o formato 
+ * "label região tamanho", que é guardado na string information
+ * 
+ * Para cada label é invocada a função correspondente que 
+ * lidará com o pedido em questão, recebendo  como argumento
+ * a string information e o file discriptor, excepto para 
+ * a label do tipo 's' que significa fecho de conexão, aí
+ * a thread é encerrada.
+ * 
+ * Args: fd da conexão a esse clipboard
+ * ********************************************************/
+
+
+
 void * thread_apps(void * data) {
 	
 	int fd = *(int*)data;
@@ -348,7 +426,7 @@ void * thread_apps(void * data) {
 	char information[15] = "";
 	
 	while(1) {
-
+		//first message is an information about the incoming message
 		if(readRoutine(fd, information, sizeof(information)) == 0) { 
 			printf("app disconnected in first readRoutine of thread_apps, read is 0\n");
 			break;
@@ -398,7 +476,9 @@ void * thread_apps(void * data) {
 	// then close it
 	close(fd);
 
-	pthread_detach(pthread_self());
+	if(pthread_detach(pthread_self()) != 0) {
+		perror("Error detaching thread in thread_apsp");
+	}
 
 	pthread_exit(NULL);
 	
@@ -406,7 +486,20 @@ void * thread_apps(void * data) {
 }
 
 
-//threads that exclusively listens for stdin commands
+/***********************************************************
+ * 
+ * Thread lançada para lidar com comandos do stdin input
+ * 
+ * Aceita: 	
+ * 		"exit" -> termina o programa
+ *		"print" -> imprime o conteudo de todas as regioes
+ * 		"print apps" -> imprime info de todas as apps ligadas 
+ * 					ao clipboard
+ * 		"print clips" -> imprime info de todos os clipboards 
+ * 					ligados a este clipboard
+ * 
+ * Args: Não utilizado
+ * ********************************************************/
 void * thread_stdin(void * data) {
 	char bufstdin[20];
 	char message[20];
@@ -486,12 +579,9 @@ void * thread_stdin(void * data) {
 		memset(bufstdin, '\0', strlen(bufstdin));	
 		memset(message, '\0', strlen(message));
 	}
-
-	pthread_detach(pthread_self());
+	if(pthread_detach(pthread_self()) != 0) {
+		perror("Error detaching stdin thread");
+	}
 
 	pthread_exit(NULL);
 }
-
-//wait mandar msg ao clipboard e ficar à espera bloqueado no read???
-
-
