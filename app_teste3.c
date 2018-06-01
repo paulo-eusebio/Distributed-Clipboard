@@ -1,6 +1,13 @@
 #include "clipboard.h"
 
-int main(){
+/*
+* Aplicação teste para continuamente mensagens com um caracter random distanciados
+* por um certo intervalo de segundos
+* 	
+* Funcionamento: correr a app ./app3 nº_seg_entre_msgs
+*
+*/
+int main(int argc, char const *argv[]) {
 	int copyData;
 	char dados[2];
 
@@ -20,7 +27,7 @@ int main(){
 			printf("Error on copy\n");
 		}
 
-		sleep(1);
+		sleep(atoi(argv[1]));
 	}
 	
 	close(sock_fd);
