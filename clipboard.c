@@ -54,7 +54,7 @@ int main(int argc, char const *argv[]) {
 	}
 
 	// thread for listening to apps that want to connect to the clipboard
-	pthread_create(&thread_app_listen_id, NULL, thread_app_listen, regions);
+	pthread_create(&thread_app_listen_id, NULL, thread_app_listen, NULL);
 	
 	// thread for listening to another clipboards that want to connect to this clipboard
 	pthread_create(&thread_clip_id, NULL, thread_clips_listen, NULL); 
